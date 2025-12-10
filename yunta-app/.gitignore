@@ -1,41 +1,310 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ============================================
+# YUNTA - Professional .gitignore
+# ============================================
+# Proyecto: Yunta App
+# Stack: Next.js 16 + TypeScript + Tailwind + Prisma + Supabase
+# Última actualización: 2025-12-09
+# ============================================
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
+# ============================================
+# 🔒 SEGURIDAD - ARCHIVOS SENSIBLES (CRÍTICO)
+# ============================================
+# Variables de entorno con credenciales
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Archivos de configuración con secretos
+*.pem
+*.key
+*.cert
+*.p12
+*.pfx
+
+# Credenciales de servicios
+service-account.json
+firebase-adminsdk.json
+gcloud-credentials.json
+
+# Archivos de backup de BD con datos sensibles
+*.sql
+*.dump
+*.backup
+
+# ============================================
+# 📦 DEPENDENCIAS Y NODE MODULES
+# ============================================
+node_modules/
+jspm_packages/
+bower_components/
+
+# Yarn
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+yarn-error.log*
+yarn-debug.log*
 
-# testing
-/coverage
+# npm
+npm-debug.log*
+package-lock.json.backup
 
-# next.js
-/.next/
-/out/
+# pnpm
+.pnpm-debug.log*
+pnpm-lock.yaml.backup
 
-# production
-/build
+# ============================================
+# 🚀 NEXT.JS - BUILD Y CACHE
+# ============================================
+.next/
+out/
+build/
+dist/
+.vercel
+.turbo
 
-# misc
+# Next.js cache
+.next/cache/
+.next/server/
+.next/static/
+
+# Next.js standalone output
+.next/standalone/
+
+# ============================================
+# 💾 PRISMA - DATABASE
+# ============================================
+# Migraciones locales de desarrollo (opcional - considera versionarlas)
+# prisma/migrations/dev/
+
+# Archivos generados por Prisma
+prisma/generated/
+
+# SQLite local (si usas SQLite para desarrollo)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# PostgreSQL dumps
+*.pgdump
+
+# ============================================
+# 🧪 TESTING Y COVERAGE
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+
+# Jest
+jest-results/
+__tests__/coverage/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# ============================================
+# 📝 TYPESCRIPT
+# ============================================
+*.tsbuildinfo
+next-env.d.ts
+
+# TypeScript cache
+*.tsbuildinfo.backup
+
+# ============================================
+# 🎨 EDITORES E IDEs
+# ============================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================
+# 💻 SISTEMA OPERATIVO
+# ============================================
+# macOS
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
 
-# debug
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================
+# 📊 LOGS Y DEBUGGING
+# ============================================
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Runtime logs
+pids/
+*.pid
+*.seed
+*.pid.lock
 
-# vercel
-.vercel
+# ============================================
+# 🔧 HERRAMIENTAS DE DESARROLLO
+# ============================================
+# Storybook
+storybook-static/
+.storybook/build/
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Webpack
+.webpack/
+
+# Parcel
+.cache/
+.parcel-cache/
+
+# ESLint cache
+.eslintcache
+
+# Prettier cache
+.prettiercache
+
+# Stylelint cache
+.stylelintcache
+
+# ============================================
+# 📱 MOBILE Y PWA
+# ============================================
+# Capacitor
+.capacitor/
+android/
+ios/
+
+# Expo
+.expo/
+.expo-shared/
+
+# ============================================
+# 🌐 DEPLOYMENT Y CI/CD
+# ============================================
+# Vercel
+.vercel/
+.vercel.json.backup
+
+# Netlify
+.netlify/
+
+# AWS
+.aws/
+.elasticbeanstalk/
+
+# Docker
+docker-compose.override.yml
+.dockerignore.backup
+
+# ============================================
+# 📚 DOCUMENTACIÓN Y TEMPORAL
+# ============================================
+# Archivos temporales
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Backups
+*.bak
+*.backup
+*.old
+
+# Archivos de notas personales
+TODO.md
+NOTES.md
+.notes/
+
+# ============================================
+# 🎯 ESPECÍFICO DE YUNTA
+# ============================================
+# Datos de prueba locales
+/data/test/
+/uploads/local/
+
+# Reportes generados
+/reports/
+/exports/
+
+# Cache de imágenes optimizadas
+/public/optimized/
+
+# ============================================
+# ✅ ARCHIVOS QUE SÍ DEBEN VERSIONARSE
+# ============================================
+# Estos archivos NO deben ignorarse:
+# - .env.example (plantilla de variables de entorno)
+# - prisma/schema.prisma (schema de la BD)
+# - prisma/migrations/ (migraciones de producción)
+# - public/ (assets estáticos)
+# - src/ (código fuente)
+# - package.json y package-lock.json
+# - tsconfig.json
+# - next.config.ts
+# - tailwind.config.ts
+# - README.md
+# ============================================
