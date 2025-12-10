@@ -308,3 +308,5 @@ NOTES.md
 # - tailwind.config.ts
 # - README.md
 # ============================================
+
+/src/generated/prisma

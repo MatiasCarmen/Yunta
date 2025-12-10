@@ -1,0 +1,133 @@
+// ============================================
+// YUNTA - Prisma Schema
+// ============================================
+// Sistema de Gestión Financiera Familiar
+// Stack: PostgreSQL + Prisma + Next.js
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// 📋 ENUMS - Tipos de Datos
+// ============================================
+
+/// Roles de usuario en el sistema YUNTA
+enum Role {
+  BENEFICIARIO  // Solo consultan y gastan (ej: hijos, familiares)
+  GESTOR        // Consultan, gastan y ven reportes (ej: Tomás, Pilar)
+  EJECUTIVO     // Control total + Gestión de Juntas (ej: Matías)
+}
+
+/// Estado del usuario en el sistema
+enum UserStatus {
+  ACTIVE        // Usuario activo
+  INACTIVE      // Usuario desactivado temporalmente
+  SUSPENDED     // Usuario suspendido por seguridad
+}
+
+// ============================================
+// 👥 MODELO: USER (Usuarios del Sistema)
+// ============================================
+
+/// Representa a los integrantes de la familia y gestores
+model User {
+  // ==========================================
+  // 🔑 IDENTIFICACIÓN
+  // ==========================================
+  
+  /// ID único del usuario (UUID)
+  id        String   @id @default(uuid())
+  
+  /// Nombre completo del usuario
+  name      String
+  
+  /// Email (opcional, para notificaciones)
+  email     String?  @unique
+  
+  /// Teléfono (opcional, para contacto)
+  phone     String?
+  
+  // ==========================================
+  // 🔐 SEGURIDAD Y AUTENTICACIÓN
+  // ==========================================
+  
+  /// Rol del usuario en el sistema
+  role      Role     @default(BENEFICIARIO)
+  
+  /// PIN de 4-6 dígitos (hasheado con bcrypt)
+  /// IMPORTANTE: Nunca almacenar en texto plano
+  pinHash   String
+  
+  /// Estado del usuario
+  status    UserStatus @default(ACTIVE)
+  
+  /// Intentos fallidos de login (para bloqueo de seguridad)
+  failedLoginAttempts Int @default(0)
+  
+  /// Última vez que se bloqueó el usuario
+  lastLockedAt DateTime?
+  
+  // ==========================================
+  // 👤 PERFIL
+  // ==========================================
+  
+  /// URL del avatar del usuario
+  avatar    String?
+  
+  /// Biografía o descripción corta
+  bio       String?
+  
+  /// Fecha de nacimiento
+  birthDate DateTime?
+  
+  // ==========================================
+  // 📊 AUDITORÍA
+  // ==========================================
+  
+  /// Fecha de creación del registro
+  createdAt DateTime @default(now())
+  
+  /// Fecha de última actualización
+  updatedAt DateTime @updatedAt
+  
+  /// Última vez que el usuario inició sesión
+  lastLoginAt DateTime?
+  
+  // ==========================================
+  // 🔗 RELACIONES
+  // ==========================================
+  // TODO: Agregar relaciones con:
+  // - Transactions (transacciones realizadas)
+  // - Meetings (juntas creadas o asistidas)
+  // - ActionItems (tareas asignadas)
+  
+  // ==========================================
+  // 📌 ÍNDICES Y CONSTRAINTS
+  // ==========================================
+  
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([createdAt])
+  @@map("users") // Nombre de la tabla en PostgreSQL
+}
+
+// ============================================
+// 💰 MODELOS DE DINERO (Próximamente)
+// ============================================
+// TODO: Transaction, Category, Budget, etc.
+
+// ============================================
+// 🤝 MODELOS DE JUNTAS (Próximamente)
+// ============================================
+// TODO: Meeting, ActionItem, Attendance, etc.
+
