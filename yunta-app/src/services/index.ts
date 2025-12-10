@@ -5,8 +5,8 @@
 // ============================================
 
 export * from './auth';
+export * from './transactions';
 
 // TODO: Agregar exports para otros servicios cuando se creen:
-// export * from './transactions';
 // export * from './meetings';
 // export * from './yuntaRules';
