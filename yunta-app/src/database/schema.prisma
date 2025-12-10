@@ -11,109 +11,118 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 // ============================================
-// 📋 ENUMS - Tipos de Datos
+// ENUMS - Tipos de Datos
 // ============================================
 
 /// Roles de usuario en el sistema YUNTA
 enum Role {
-  BENEFICIARIO  // Solo consultan y gastan (ej: hijos, familiares)
-  GESTOR        // Consultan, gastan y ven reportes (ej: Tomás, Pilar)
-  EJECUTIVO     // Control total + Gestión de Juntas (ej: Matías)
+  BENEFICIARIO // Solo consultan y gastan (ej: hijos, familiares)
+  GESTOR // Consultan, gastan y ven reportes (ej: Tomás, Pilar)
+  EJECUTIVO // Control total + Gestión de Juntas (ej: Matías)
 }
 
 /// Estado del usuario en el sistema
 enum UserStatus {
-  ACTIVE        // Usuario activo
-  INACTIVE      // Usuario desactivado temporalmente
-  SUSPENDED     // Usuario suspendido por seguridad
+  ACTIVE // Usuario activo
+  INACTIVE // Usuario desactivado temporalmente
+  SUSPENDED // Usuario suspendido por seguridad
 }
 
 // ============================================
-// 👥 MODELO: USER (Usuarios del Sistema)
+// MODELO: USER (Usuarios del Sistema)
 // ============================================
 
 /// Representa a los integrantes de la familia y gestores
 model User {
   // ==========================================
-  // 🔑 IDENTIFICACIÓN
+  // IDENTIFICACIÓN
   // ==========================================
-  
+
   /// ID único del usuario (UUID)
-  id        String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   /// Nombre completo del usuario
-  name      String
-  
+  name String
+
   /// Email (opcional, para notificaciones)
-  email     String?  @unique
-  
+  email String? @unique
+
   /// Teléfono (opcional, para contacto)
-  phone     String?
-  
+  phone String?
+
   // ==========================================
-  // 🔐 SEGURIDAD Y AUTENTICACIÓN
+  // SEGURIDAD Y AUTENTICACIÓN
   // ==========================================
-  
+
   /// Rol del usuario en el sistema
-  role      Role     @default(BENEFICIARIO)
-  
+  role Role @default(BENEFICIARIO)
+
   /// PIN de 4-6 dígitos (hasheado con bcrypt)
   /// IMPORTANTE: Nunca almacenar en texto plano
-  pinHash   String
-  
+  pinHash String
+
   /// Estado del usuario
-  status    UserStatus @default(ACTIVE)
-  
+  status UserStatus @default(ACTIVE)
+
   /// Intentos fallidos de login (para bloqueo de seguridad)
   failedLoginAttempts Int @default(0)
-  
+
   /// Última vez que se bloqueó el usuario
   lastLockedAt DateTime?
-  
+
   // ==========================================
-  // 👤 PERFIL
+  // PERFIL
   // ==========================================
-  
+
   /// URL del avatar del usuario
-  avatar    String?
-  
+  avatar String?
+
   /// Biografía o descripción corta
-  bio       String?
-  
+  bio String?
+
   /// Fecha de nacimiento
   birthDate DateTime?
-  
+
   // ==========================================
-  // 📊 AUDITORÍA
+  // AUDITORÍA
   // ==========================================
-  
+
   /// Fecha de creación del registro
   createdAt DateTime @default(now())
-  
+
   /// Fecha de última actualización
   updatedAt DateTime @updatedAt
-  
+
   /// Última vez que el usuario inició sesión
   lastLoginAt DateTime?
-  
+
   // ==========================================
-  // 🔗 RELACIONES
+  // RELACIONES
   // ==========================================
-  // TODO: Agregar relaciones con:
-  // - Transactions (transacciones realizadas)
-  // - Meetings (juntas creadas o asistidas)
-  // - ActionItems (tareas asignadas)
-  
+
+  /// Transacciones realizadas por este usuario
+  transactions Transaction[]
+
+  /// Juntas creadas/moderadas por este usuario
+  createdMeetings Meeting[] @relation("CreatedMeetings")
+
+  /// Asistencia a juntas
+  meetingAttendance MeetingAttendance[]
+
+  /// Tareas asignadas a este usuario
+  assignedActionItems ActionItem[] @relation("AssignedActionItems")
+
+  /// Tareas creadas por este usuario
+  createdActionItems ActionItem[] @relation("CreatedActionItems")
+
   // ==========================================
-  // 📌 ÍNDICES Y CONSTRAINTS
+  // ÍNDICES Y CONSTRAINTS
   // ==========================================
-  
+
   @@index([email])
   @@index([role])
   @@index([status])
@@ -122,12 +131,380 @@ model User {
 }
 
 // ============================================
-// 💰 MODELOS DE DINERO (Próximamente)
+// MODELOS DE FINANZAS
 // ============================================
-// TODO: Transaction, Category, Budget, etc.
+
+/// Tipo de transacción: Ingreso o Gasto
+enum TransactionType {
+  IN // Ingreso
+  OUT // Gasto
+}
+
+/// Métodos de pago utilizados por la familia
+enum PaymentMethod {
+  CASH // Efectivo
+  DEBIT // Tarjeta de débito
+  CREDIT_BCP // BCP Visa Dorada
+  YAPE // Yape
+}
+
+/// Categorías de gasto para análisis y reportes
+enum ExpenseCategory {
+  FOOD // Comida y alimentos
+  MOBILITY // Transporte y movilidad
+  SHOPPING // Compras generales
+  ERRANDS // Encargos
+  MERCHANDISE // Mercadería (crucial para cálculo de ganancia)
+  HEALTH // Salud y medicinas
+  EDUCATION // Educación
+  ENTERTAINMENT // Entretenimiento
+  UTILITIES // Servicios (luz, agua, internet)
+  OTHER // Otros gastos
+  RESERVATION_FUNDS // Fondo de reserva (ej: 300 soles)
+  PAYROLL // Pago a personal (ej: 50 soles)
+}
 
 // ============================================
-// 🤝 MODELOS DE JUNTAS (Próximamente)
+// MODELO: TRANSACTION (Transacciones)
 // ============================================
-// TODO: Meeting, ActionItem, Attendance, etc.
 
+/// Representa todas las transacciones financieras del sistema
+model Transaction {
+  // ==========================================
+  // IDENTIFICACIÓN
+  // ==========================================
+
+  /// ID único de la transacción (UUID)
+  id String @id @default(uuid())
+
+  // ==========================================
+  // INFORMACIÓN FINANCIERA
+  // ==========================================
+
+  /// Monto de la transacción (usando Decimal para precisión)
+  /// Ejemplo: 150.50, 1000.00
+  amount Decimal @db.Decimal(10, 2)
+
+  /// Tipo de transacción (Ingreso o Gasto)
+  type TransactionType
+
+  /// Método de pago utilizado
+  method PaymentMethod
+
+  /// Categoría del gasto (solo para transacciones OUT)
+  category ExpenseCategory?
+
+  // ==========================================
+  // DESCRIPCIÓN Y DETALLES
+  // ==========================================
+
+  /// Descripción detallada de la transacción
+  description String
+
+  /// Notas adicionales (opcional)
+  notes String?
+
+  /// Fecha de la transacción
+  date DateTime @default(now())
+
+  /// Comprobante o recibo (URL de imagen, opcional)
+  receipt String?
+
+  // ==========================================
+  // RELACIONES
+  // ==========================================
+
+  /// Usuario que realizó la transacción
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ==========================================
+  // AUDITORÍA
+  // ==========================================
+
+  /// Fecha de creación del registro
+  createdAt DateTime @default(now())
+
+  /// Fecha de última actualización
+  updatedAt DateTime @updatedAt
+
+  /// Indica si la transacción fue editada después de crearse
+  isEdited Boolean @default(false)
+
+  /// Fecha de la última edición (si aplica)
+  lastEditedAt DateTime?
+
+  // ==========================================
+  // ÍNDICES Y CONSTRAINTS
+  // ==========================================
+
+  @@index([userId])
+  @@index([type])
+  @@index([method])
+  @@index([category])
+  @@index([date])
+  @@index([createdAt])
+  @@index([userId, date]) // Índice compuesto para consultas frecuentes
+  @@map("transactions")
+}
+
+// ============================================
+// MODELOS DE JUNTAS Y COMPROMISOS
+// ============================================
+
+/// Estado de una junta
+enum MeetingStatus {
+  SCHEDULED // Programada
+  IN_PROGRESS // En progreso
+  COMPLETED // Completada
+  CANCELLED // Cancelada
+}
+
+/// Estado de un compromiso/tarea
+enum ActionItemStatus {
+  PENDING // Pendiente
+  IN_PROGRESS // En progreso
+  COMPLETED // Completado
+  CANCELLED // Cancelado
+}
+
+/// Prioridad de un compromiso
+enum ActionItemPriority {
+  LOW // Baja
+  MEDIUM // Media
+  HIGH // Alta
+  URGENT // Urgente
+}
+
+// ============================================
+// MODELO: MEETING (Juntas)
+// ============================================
+
+/// Representa una junta familiar o reunión
+model Meeting {
+  // ==========================================
+  // IDENTIFICACIÓN
+  // ==========================================
+
+  /// ID único de la junta (UUID)
+  id String @id @default(uuid())
+
+  // ==========================================
+  // INFORMACIÓN DE LA JUNTA
+  // ==========================================
+
+  /// Título o asunto de la junta
+  title String
+
+  /// Descripción breve
+  description String?
+
+  /// Fecha y hora de la junta
+  date DateTime
+
+  /// Duración estimada en minutos
+  durationMinutes Int?
+
+  /// Ubicación (física o virtual)
+  location String?
+
+  // ==========================================
+  // MINUTAS Y NOTAS
+  // ==========================================
+
+  /// Agenda de la junta
+  agenda String? @db.Text
+
+  /// Minutas completas (notas de la reunión)
+  /// Usando @db.Text para soportar textos largos
+  minutes String? @db.Text
+
+  /// Notas adicionales
+  notes String? @db.Text
+
+  // ==========================================
+  // ESTADO
+  // ==========================================
+
+  /// Estado actual de la junta
+  status MeetingStatus @default(SCHEDULED)
+
+  /// Fecha de inicio real (cuando comienza)
+  startedAt DateTime?
+
+  /// Fecha de finalización real
+  completedAt DateTime?
+
+  // ==========================================
+  // RELACIONES
+  // ==========================================
+
+  /// Usuario que creó/moderó la junta
+  createdById String
+  createdBy   User   @relation("CreatedMeetings", fields: [createdById], references: [id], onDelete: Cascade)
+
+  /// Compromisos que surgieron de esta junta
+  actionItems ActionItem[]
+
+  /// Asistentes a la junta (relación muchos a muchos)
+  attendees MeetingAttendance[]
+
+  // ==========================================
+  // AUDITORÍA
+  // ==========================================
+
+  /// Fecha de creación del registro
+  createdAt DateTime @default(now())
+
+  /// Fecha de última actualización
+  updatedAt DateTime @updatedAt
+
+  // ==========================================
+  // ÍNDICES Y CONSTRAINTS
+  // ==========================================
+
+  @@index([createdById])
+  @@index([status])
+  @@index([date])
+  @@index([createdAt])
+  @@map("meetings")
+}
+
+// ============================================
+// MODELO: ACTION ITEM (Compromisos/Tareas)
+// ============================================
+
+/// Representa un compromiso o tarea pendiente
+model ActionItem {
+  // ==========================================
+  // IDENTIFICACIÓN
+  // ==========================================
+
+  /// ID único del compromiso (UUID)
+  id String @id @default(uuid())
+
+  // ==========================================
+  // INFORMACIÓN DEL COMPROMISO
+  // ==========================================
+
+  /// Título del compromiso
+  title String
+
+  /// Descripción detallada
+  description String? @db.Text
+
+  /// Prioridad del compromiso
+  priority ActionItemPriority @default(MEDIUM)
+
+  /// Estado del compromiso
+  status ActionItemStatus @default(PENDING)
+
+  // ==========================================
+  // FECHAS Y PLAZOS
+  // ==========================================
+
+  /// Fecha límite para completar
+  dueDate DateTime?
+
+  /// Fecha de inicio (opcional)
+  startDate DateTime?
+
+  /// Fecha de completación real
+  completedAt DateTime?
+
+  // ==========================================
+  // RELACIONES
+  // ==========================================
+
+  /// Junta de la que proviene este compromiso
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// Usuario responsable de cumplir el compromiso
+  assignedToId String
+  assignedTo   User   @relation("AssignedActionItems", fields: [assignedToId], references: [id], onDelete: Cascade)
+
+  /// Usuario que creó el compromiso (puede ser diferente al responsable)
+  createdById String
+  createdBy   User   @relation("CreatedActionItems", fields: [createdById], references: [id], onDelete: Cascade)
+
+  // ==========================================
+  // AUDITORÍA
+  // ==========================================
+
+  /// Fecha de creación del registro
+  createdAt DateTime @default(now())
+
+  /// Fecha de última actualización
+  updatedAt DateTime @updatedAt
+
+  // ==========================================
+  // ÍNDICES Y CONSTRAINTS
+  // ==========================================
+
+  @@index([meetingId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([createdAt])
+  @@map("action_items")
+}
+
+// ============================================
+// MODELO: MEETING ATTENDANCE (Asistencia)
+// ============================================
+
+/// Tabla intermedia para asistentes a juntas
+model MeetingAttendance {
+  // ==========================================
+  // IDENTIFICACIÓN
+  // ==========================================
+
+  /// ID único del registro de asistencia
+  id String @id @default(uuid())
+
+  // ==========================================
+  // RELACIONES
+  // ==========================================
+
+  /// Junta a la que asistió
+  meetingId String
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  /// Usuario que asistió
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ==========================================
+  // INFORMACIÓN DE ASISTENCIA
+  // ==========================================
+
+  /// Si el usuario confirmó asistencia
+  confirmed Boolean @default(false)
+
+  /// Si el usuario asistió realmente
+  attended Boolean @default(false)
+
+  /// Nota del asistente (opcional)
+  notes String?
+
+  // ==========================================
+  // AUDITORÍA
+  // ==========================================
+
+  /// Fecha de creación del registro
+  createdAt DateTime @default(now())
+
+  /// Fecha de última actualización
+  updatedAt DateTime @updatedAt
+
+  // ==========================================
+  // ÍNDICES Y CONSTRAINTS
+  // ==========================================
+
+  @@unique([meetingId, userId]) // Un usuario no puede estar duplicado en la misma junta
+  @@index([meetingId])
+  @@index([userId])
+  @@map("meeting_attendance")
+}
