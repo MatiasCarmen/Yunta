@@ -1,0 +1,17 @@
+-- ============================================
+-- YUNTA - SEED DE USUARIOS INICIALES
+-- ============================================
+-- Copia y pega este contenido en el SQL Editor de Supabase
+-- para crear los 5 usuarios iniciales con sus PINs.
+-- ============================================
+
+INSERT INTO users (id, name, email, role, "pinHash", status, "failedLoginAttempts", "createdAt", "updatedAt")
+VALUES 
+  (gen_random_uuid(), 'Matías', 'matias@yunta.local', 'EJECUTIVO', '$2b$10$c.1.28V2uXNoI8UvcAzNyOGHnYP7GcR.X.1M2VUcYrMe/BJVQjrS6', 'ACTIVE', 0, NOW(), NOW()),
+  (gen_random_uuid(), 'Tomás', 'tomas@yunta.local', 'GESTOR', '$2b$10$cxUxC/8yfQo9k5gs9SySH.tv04pUiL0BJSs0FG/vcOrclPDFpqqdi', 'ACTIVE', 0, NOW(), NOW()),
+  (gen_random_uuid(), 'Pilar', 'pilar@yunta.local', 'GESTOR', '$2b$10$ig.vZt4obIBj21sjvGOcyu2J7BvLlfqcdxlNV3toaoDX3hKlD/yve', 'ACTIVE', 0, NOW(), NOW()),
+  (gen_random_uuid(), 'Ariana', 'ariana@yunta.local', 'BENEFICIARIO', '$2b$10$bXID8MeH3UUSN2R391F8SuZevwI5NMZYb7Q8HJmy80bL3vKIqvIQW', 'ACTIVE', 0, NOW(), NOW()),
+  (gen_random_uuid(), 'Sthefany', 'sthefany@yunta.local', 'BENEFICIARIO', '$2b$10$tmSfMRAqkaexHDdtyYecVeMVA9zn.I45AZR3QesNP3McI8Q50bB8W', 'ACTIVE', 0, NOW(), NOW())
+ON CONFLICT (email) DO UPDATE SET 
+  "pinHash" = EXCLUDED."pinHash",
+  role = EXCLUDED.role;
