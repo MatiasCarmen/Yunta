@@ -28,6 +28,16 @@ export interface PendingTransaction {
     status: 'PENDING' | 'SYNCING' | 'ERROR'; // Estado de sincronización
 }
 
+export interface LocalMeeting {
+    id?: number; // ID autoincremental local
+    title: string;
+    participants: string[]; // Lista de IDs de usuarios
+    content: string; // Minuta completa
+    agreements: string; // Acuerdos tomados
+    date: Date;
+    synced: number; // 0 = Pendiente de subir, 1 = Sincronizado
+}
+
 // ============================================
 // CONFIGURACIÓN DE DEXIE
 // ============================================
@@ -35,13 +45,21 @@ export interface PendingTransaction {
 export class YuntaLocalDB extends Dexie {
     // Tablas
     pendingTransactions!: Table<PendingTransaction>;
+    meetings!: Table<LocalMeeting>;
 
     constructor() {
         super('YuntaLocalDB');
 
-        this.version(1).stores({
-            // Definición de esquema e índices
-            pendingTransactions: '++id, tempId, status, userId, date'
+        // Versión 1 original
+        // this.version(1).stores({ pendingTransactions: '++id, tempId, status, userId, date' });
+
+        // Versión 2: Agregamos meetings
+        this.version(2).stores({
+            // Transacciones pendientes de subida
+            pendingTransactions: '++id, tempId, status, userId, date',
+
+            // Juntas locales (cache y pendientes)
+            meetings: '++id, title, date, synced'
         });
     }
 }
