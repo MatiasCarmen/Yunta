@@ -5,11 +5,13 @@ Esta carpeta contiene guías y scripts para verificar el módulo de Juntas Offli
 ## 📋 Archivos de Verificación
 
 ### 1. `VERIFICATION-OFFLINE-MEETINGS.md`
+
 Guía básica para verificar la **creación offline** de juntas.
 
 **Qué verifica:**
+
 - ✅ Guardado local en Dexie (IndexedDB)
-- ✅ Banner "Offline-First" 
+- ✅ Banner "Offline-First"
 - ✅ Funcionamiento sin internet
 
 **Cuándo usarlo:** Primera vez configurando el módulo.
@@ -17,9 +19,11 @@ Guía básica para verificar la **creación offline** de juntas.
 ---
 
 ### 2. `VERIFICATION-SYNC.md` ⭐
+
 Guía completa para verificar el **flujo completo de sincronización**.
 
 **Qué verifica:**
+
 - ✅ Creación offline de juntas
 - ✅ Almacenamiento local
 - ✅ Listado con badges de estado
@@ -33,26 +37,31 @@ Guía completa para verificar el **flujo completo de sincronización**.
 ## 🛠️ Scripts de Prueba
 
 ### 1. `scripts/test-dexie.js`
+
 Script para probar la base de datos local (Dexie).
 
 **Uso:**
+
 ```javascript
 // En la consola del navegador:
-await testDexieConnection()
-await createTestMeeting()
-await listAllMeetings()
+await testDexieConnection();
+await createTestMeeting();
+await listAllMeetings();
 ```
 
 ### 2. `scripts/test-sync-flow.js` ⭐
+
 Script automatizado para probar el flujo completo.
 
 **Uso:**
+
 ```javascript
 // En la consola del navegador:
-await syncTest.runFullSyncTest()
+await syncTest.runFullSyncTest();
 ```
 
 **Pasos que ejecuta:**
+
 1. ✅ Verifica configuración
 2. ✅ Crea junta de prueba
 3. ✅ Verifica estado local
@@ -66,6 +75,7 @@ await syncTest.runFullSyncTest()
 ### Opción 1: Verificación Manual (Recomendado para primera vez)
 
 1. Asegúrate de que el servidor esté corriendo:
+
    ```bash
    npm run dev
    ```
@@ -81,6 +91,7 @@ await syncTest.runFullSyncTest()
 ### Opción 2: Verificación Automatizada (Para pruebas rápidas)
 
 1. Servidor corriendo:
+
    ```bash
    npm run dev
    ```
@@ -92,8 +103,9 @@ await syncTest.runFullSyncTest()
 4. Copia y pega el contenido de `scripts/test-sync-flow.js`
 
 5. Ejecuta:
+
    ```javascript
-   await syncTest.runFullSyncTest()
+   await syncTest.runFullSyncTest();
    ```
 
 6. Observa los resultados en la consola
@@ -135,25 +147,29 @@ Antes de comenzar cualquier verificación, asegúrate de:
 ## 🔧 Comandos Útiles
 
 ### Iniciar servidor de desarrollo
+
 ```bash
 npm run dev
 ```
 
 ### Abrir Prisma Studio (para verificar DB)
+
 ```bash
 npx prisma studio
 ```
 
 ### Ver logs de la base de datos local
+
 ```javascript
 // En consola del navegador:
-indexedDB.databases().then(console.log)
+indexedDB.databases().then(console.log);
 ```
 
 ### Limpiar base de datos local
+
 ```javascript
 // En consola del navegador:
-await (await import('/src/database/local.ts')).localDb.meetings.clear()
+await (await import("/src/database/local.ts")).localDb.meetings.clear();
 ```
 
 ---
@@ -163,6 +179,7 @@ await (await import('/src/database/local.ts')).localDb.meetings.clear()
 ### Problema: "No hay sesión activa"
 
 **Solución:**
+
 1. Inicia sesión en `/api/auth/login`
 2. Verifica localStorage:
    - `yunta_userId` debe existir
@@ -171,6 +188,7 @@ await (await import('/src/database/local.ts')).localDb.meetings.clear()
 ### Problema: "Error sincronizando: 500"
 
 **Solución:**
+
 1. Revisa la consola del servidor
 2. Verifica que Supabase esté online
 3. Confirma que `.env` tenga `DATABASE_URL`
@@ -178,6 +196,7 @@ await (await import('/src/database/local.ts')).localDb.meetings.clear()
 ### Problema: "YuntaLocalDB no aparece en IndexedDB"
 
 **Solución:**
+
 1. Recarga la página (F5)
 2. Verifica que estés en `http://localhost:3000`
 3. Revisa errores en la consola

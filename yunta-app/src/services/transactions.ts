@@ -49,8 +49,8 @@ export async function createTransaction(
     userId: string
 ): Promise<CreateTransactionResult> {
     try {
-        // Validar datos básicos
-        if (!data.amount || data.amount <= 0) {
+        const amountValue = typeof data.amount === 'number' ? data.amount : Number(data.amount);
+        if (!data.amount || amountValue <= 0) {
             throw new Error('El monto debe ser mayor a 0');
         }
 

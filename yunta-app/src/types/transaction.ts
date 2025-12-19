@@ -4,8 +4,9 @@
 // Tipos para el modelo de transacciones
 // ============================================
 
-import { TransactionType, PaymentMethod, ExpenseCategory } from '@prisma/client';
-import { Decimal } from '@prisma/client/runtime/library';
+import { TransactionType, PaymentMethod, ExpenseCategory, Prisma } from '@prisma/client';
+
+type Decimal = Prisma.Decimal;
 
 // ============================================
 // TRANSACTION TYPES
@@ -59,6 +60,7 @@ export interface TransactionResponse {
     updatedAt: Date;
     isEdited: boolean;
     lastEditedAt?: Date;
+
 }
 
 /**
