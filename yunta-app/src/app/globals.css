@@ -1,26 +1,122 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+  
+  @keyframes accordion-down {
+    from { height: 0 }
+    to { height: var(--radix-accordion-content-height) }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height) }
+    to { height: 0 }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 
+  Definición de Variables CSS (Tu paleta de colores)
+  Adaptada para Tailwind v4
+*/
+:root {
+  --background: 88 48% 96%;
+  --foreground: 124 44% 15%;
+  --card: 88 48% 100%;
+  --card-foreground: 124 44% 15%;
+  --popover: 88 48% 100%;
+  --popover-foreground: 124 44% 15%;
+  --primary: 124 44% 39%;
+  --primary-foreground: 88 48% 98%;
+  --secondary: 88 30% 90%;
+  --secondary-foreground: 124 44% 20%;
+  --muted: 88 30% 90%;
+  --muted-foreground: 124 44% 30%;
+  --accent: 50 98% 60%;
+  --accent-foreground: 50 98% 15%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 88 30% 85%;
+  --input: 88 30% 88%;
+  --ring: 124 44% 39%;
+  --chart-1: 124 44% 39%;
+  --chart-2: 50 98% 60%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 124 20% 10%;
+  --foreground: 88 48% 96%;
+  --card: 124 20% 12%;
+  --card-foreground: 88 48% 96%;
+  --popover: 124 20% 10%;
+  --popover-foreground: 88 48% 96%;
+  --primary: 124 44% 45%;
+  --primary-foreground: 88 48% 98%;
+  --secondary: 124 20% 15%;
+  --secondary-foreground: 88 48% 98%;
+  --muted: 124 20% 15%;
+  --muted-foreground: 88 48% 80%;
+  --accent: 50 98% 60%;
+  --accent-foreground: 50 98% 15%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 124 20% 20%;
+  --input: 124 20% 20%;
+  --ring: 124 44% 45%;
+  --chart-1: 124 44% 45%;
+  --chart-2: 50 98% 60%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+}
+
+/* Estilos base con la nueva sintaxis de @apply */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
