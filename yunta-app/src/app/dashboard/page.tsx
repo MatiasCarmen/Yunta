@@ -6,12 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import Link from 'next/link';
-import { cn } from "@/lib/utils"; // Importing cn for potential class merging if needed later
+import { cn } from "@/lib/utils";
+
+// Importamos los nuevos componentes inteligentes
+import { SpendingChart } from '@/components/SpendingChart';
+import { TransactionList } from '@/components/TransactionList';
 
 // Tipos adaptados a YUNTA
 interface Transaction {
     id: string;
-    amount: number | string; // Prisma might return Decimal as string or number
+    amount: number | string;
     type: 'IN' | 'OUT';
     description: string;
     category?: string;
@@ -23,14 +27,11 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [balanceData, setBalanceData] = useState({ totalIncome: 0, totalExpenses: 0, balance: 0 });
 
-    // EL CEREBRO NUEVO: Fetch a tu API de YUNTA
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // 1. Obtener transacciones recientes
-                // TODO: En el futuro, pasar userId dinámico. Por ahora la API puede requerir autenticación o un userId.
-                // Si la API falla por falta de userId, mostraremos el dashboard vacío pero bonito.
-                const txRes = await fetch('/api/transactions?limit=10');
+                // Pedimos 50 para tener datos suficientes para el gráfico
+                const txRes = await fetch('/api/transactions?limit=50');
 
                 if (!txRes.ok) {
                     throw new Error('Error al obtener transacciones');
@@ -38,12 +39,10 @@ export default function DashboardPage() {
 
                 const txData = await txRes.json();
 
-                // 2. Procesar datos
-                if (txData && Array.isArray(txData)) { // Ajuste: revisar si txData es array directo o txData.data
+                if (txData || txData.data) {
                     const dataList = Array.isArray(txData) ? txData : txData.data || [];
                     setTransactions(dataList);
 
-                    // Calculo rápido para las tarjetas
                     const income = dataList
                         .filter((t: Transaction) => t.type === 'IN')
                         .reduce((acc: number, t: Transaction) => acc + Number(t.amount), 0);
@@ -56,7 +55,6 @@ export default function DashboardPage() {
                 }
             } catch (error) {
                 console.error("Error cargando dashboard:", error);
-                // No rompemos la UI, solo mostramos datos en 0
             } finally {
                 setLoading(false);
             }
@@ -79,7 +77,10 @@ export default function DashboardPage() {
                 <div className="grid gap-4 md:grid-cols-3">
                     <Skeleton className="h-32" /><Skeleton className="h-32" /><Skeleton className="h-32" />
                 </div>
-                <Skeleton className="h-64 mt-8" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    <Skeleton className="h-[300px] col-span-2" />
+                    <Skeleton className="h-[400px] col-span-2" />
+                </div>
             </div>
         );
     }
@@ -90,7 +91,7 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-foreground">Resumen Financiero</h1>
-                    <p className="text-muted-foreground mt-1">Tu balance general y movimientos recientes.</p>
+                    <p className="text-muted-foreground mt-1">Tu balance general y movimientos detallados.</p>
                 </div>
 
                 <Button asChild className="gap-2 shadow-lg hover:shadow-xl transition-all">
@@ -151,50 +152,17 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* Listado de Transacciones */}
-            <div className="grid gap-4">
-                <Card className="shadow-sm">
-                    <CardHeader>
-                        <CardTitle>Transacciones Recientes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {transactions.length === 0 ? (
-                            <div className="text-center py-12 text-muted-foreground">
-                                <p>No hay movimientos registrados para este periodo.</p>
-                                <Button variant="link" asChild className="mt-2">
-                                    <Link href="/dashboard/transactions/new">
-                                        Crear tu primer movimiento →
-                                    </Link>
-                                </Button>
-                            </div>
-                        ) : (
-                            <ul className="space-y-4">
-                                {transactions.map((t) => (
-                                    <li key={t.id} className="flex justify-between items-center border-b border-border pb-3 last:border-0 last:pb-0 hover:bg-muted/50 p-2 rounded-lg transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn(
-                                                "w-10 h-10 rounded-full flex items-center justify-center",
-                                                t.type === 'IN' ? "bg-green-100 text-green-600 dark:bg-green-900/30" : "bg-red-100 text-red-600 dark:bg-red-900/30"
-                                            )}>
-                                                {t.type === 'IN' ? <TrendingUp className="h-5 w-5" /> : <TrendingDown className="h-5 w-5" />}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-foreground">{t.description}</p>
-                                                <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleDateString()} • {t.category || 'General'}</p>
-                                            </div>
-                                        </div>
-                                        <span className={cn(
-                                            "font-bold tabular-nums",
-                                            t.type === 'IN' ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
-                                        )}>
-                                            {t.type === 'IN' ? '+' : '-'} {formatCurrency(Number(t.amount))}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </CardContent>
-                </Card>
+            {/* Visualización de Datos (Gráficos y Tablas) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Gráfico de Barras - Ocupa todo el ancho en móvil, mitad en escritorio si agregamos más cosas, o full width como pediste */}
+                <div className="col-span-1 md:col-span-2">
+                    <SpendingChart transactions={transactions} />
+                </div>
+
+                {/* Lista de Transacciones - Ocupa todo el ancho */}
+                <div className="col-span-1 md:col-span-2">
+                    <TransactionList transactions={transactions} />
+                </div>
             </div>
         </div>
     );
