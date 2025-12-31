@@ -1,0 +1,85 @@
+
+// ============================================
+// MODELOS DE JUNTAS (ROSCAS) - MÓDULO NUEVO
+// ============================================
+
+model Junta {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime
+  amount      Decimal   @db.Decimal(10, 2)
+  currency    String    @default("PEN")
+  frequency   String    @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  duration    Int       // Duración en periodos (días, semanas...)
+  
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+
+  adminId     String
+  admin       User      @relation("JuntaAdmin", fields: [adminId], references: [id])
+  
+  shares      JuntaShare[]
+  turns       JuntaTurn[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("juntas")
+}
+
+model JuntaShare {
+  id        String   @id @default(uuid())
+  juntaId   String
+  junta     Junta    @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  userId    String?  // Puede ser un usuario del sistema
+  guestName String?  // O un invitado externo (nombre texto simple)
+  
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+
+  // Un usuario puede comprar varios "shares" o cupos
+  turns     JuntaTurn[] 
+
+  @@map("junta_shares")
+}
+
+model JuntaTurn {
+  id          String     @id @default(uuid())
+  juntaId     String
+  junta       Junta      @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  
+  turnNumber  Int        // Número de turno (1, 2, 3...)
+  date        DateTime   // Fecha programada de pago
+  
+  beneficiaryId String
+  beneficiary   JuntaShare @relation(fields: [beneficiaryId], references: [id])
+  
+  expectedAmount Decimal @db.Decimal(10, 2)
+  status         String  @default("PENDING") // PENDING, FUNDED, PAID_OUT
+  
+  payments    JuntaPayment[] // Aportes de los otros participantes para este turno
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("junta_turns")
+}
+
+model JuntaPayment {
+  id          String     @id @default(uuid())
+  turnId      String
+  turn        JuntaTurn  @relation(fields: [turnId], references: [id], onDelete: Cascade)
+  
+  shareId     String     // Qué "share" está pagando
+  amount      Decimal    @db.Decimal(10, 2)
+  paidAt      DateTime   @default(now())
+  method      PaymentMethod 
+  
+  status      String     @default("CONFIRMED") // PENDING_VERIFICATION, CONFIRMED
+  evidenceUrl String?    // Foto del voucher
+
+  createdAt   DateTime @default(now())
+
+  @@map("junta_payments")
+}

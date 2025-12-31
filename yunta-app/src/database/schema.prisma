@@ -11,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // ============================================
@@ -119,6 +119,12 @@ model User {
   /// Tareas creadas por este usuario
   createdActionItems ActionItem[] @relation("CreatedActionItems")
 
+  /// Juntas administradas por este usuario
+  administeredJuntas Junta[] @relation("JuntaAdmin")
+
+  /// Participaciones en Juntas
+  juntaShares JuntaShare[]
+
   // ==========================================
   // ÍNDICES Y CONSTRAINTS
   // ==========================================
@@ -183,7 +189,7 @@ model Transaction {
 
   /// Monto de la transacción (usando Decimal para precisión)
   /// Ejemplo: 150.50, 1000.00
-  amount Decimal @db.Decimal(10, 2)
+  amount Decimal
 
   /// Tipo de transacción (Ingreso o Gasto)
   type TransactionType
@@ -313,14 +319,14 @@ model Meeting {
   // ==========================================
 
   /// Agenda de la junta
-  agenda String? @db.Text
+  agenda String?
 
   /// Minutas completas (notas de la reunión)
   /// Usando @db.Text para soportar textos largos
-  minutes String? @db.Text
+  minutes String?
 
   /// Notas adicionales
-  notes String? @db.Text
+  notes String?
 
   // ==========================================
   // ESTADO
@@ -391,7 +397,7 @@ model ActionItem {
   title String
 
   /// Descripción detallada
-  description String? @db.Text
+  description String?
 
   /// Prioridad del compromiso
   priority ActionItemPriority @default(MEDIUM)
@@ -507,4 +513,89 @@ model MeetingAttendance {
   @@index([meetingId])
   @@index([userId])
   @@map("meeting_attendance")
+}
+
+// ============================================
+// MODELOS DE JUNTAS (ROSCAS) - MÓDULO NUEVO
+// ============================================
+
+model Junta {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  startDate   DateTime
+  amount      Decimal  
+  currency    String    @default("PEN")
+  frequency   String    @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  duration    Int       // Duración en periodos (días, semanas...)
+  
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+
+  adminId     String
+  admin       User      @relation("JuntaAdmin", fields: [adminId], references: [id])
+  
+  shares      JuntaShare[]
+  turns       JuntaTurn[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("juntas")
+}
+
+model JuntaShare {
+  id        String   @id @default(uuid())
+  juntaId   String
+  junta     Junta    @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  userId    String?  // Puede ser un usuario del sistema (opcional)
+  guestName String?  // O un invitado externo (nombre texto simple)
+  
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+
+  // Un usuario puede tener varios turnos asignados
+  turns     JuntaTurn[] 
+
+  @@map("junta_shares")
+}
+
+model JuntaTurn {
+  id          String     @id @default(uuid())
+  juntaId     String
+  junta       Junta      @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  
+  turnNumber  Int        // Número de turno (1, 2, 3...)
+  date        DateTime   // Fecha programada de pago
+  
+  beneficiaryId String
+  beneficiary   JuntaShare @relation(fields: [beneficiaryId], references: [id])
+  
+  expectedAmount Decimal
+  status         String  @default("PENDING") // PENDING, FUNDED, PAID_OUT
+  
+  payments    JuntaPayment[] // Aportes de los otros participantes para este turno
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("junta_turns")
+}
+
+model JuntaPayment {
+  id          String     @id @default(uuid())
+  turnId      String
+  turn        JuntaTurn  @relation(fields: [turnId], references: [id], onDelete: Cascade)
+  
+  shareId     String     // Qué "share" está pagando
+  amount      Decimal   
+  paidAt      DateTime   @default(now())
+  method      PaymentMethod 
+  
+  status      String     @default("CONFIRMED") // PENDING_VERIFICATION, CONFIRMED
+  evidenceUrl String?    // Foto del voucher
+
+  createdAt   DateTime @default(now())
+
+  @@map("junta_payments")
 }

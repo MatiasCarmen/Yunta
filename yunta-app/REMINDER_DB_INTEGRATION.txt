@@ -1,0 +1,26 @@
+[PENDIENTE] Integración a Base de Datos de Producción (PostgreSQL/Supabase)
+
+Estado Actual:
+- Se está utilizando SQLite (local) para desarrollo rápido debido a problemas de latencia/conexión con Supabase.
+- El archivo schema.prisma tiene el datasource configurado como "sqlite".
+
+Pasos para Volver a Producción:
+1. Cambiar el proveedor en `schema.prisma`:
+   DE: provider = "sqlite"
+   A:  provider = "postgresql"
+
+2. Actualizar `src/database/schema.prisma`:
+   - Prisma con SQLite no soporta Enums nativos de la misma forma que Postgres. Si se hicieron cambios para SQLite, revertirlos o asegurarse de que sean compatibles.
+   - Tipos de datos: SQLite no tiene `Decimal` nativo (lo simula), Postgres sí. Verificar `@db.Decimal`.
+
+3. Restaurar variable de entorno:
+   - En `.env`, cambiar `DATABASE_URL` para que apunte nuevamente a Supabase/Neon.
+
+4. Migración de Datos:
+   - Los datos creados en local (dev.db) NO se subirán automáticamente.
+   - Si se requiere, usar un script de exportación/importación, o simplemente ejecutar `npx prisma db push` en producción para iniciar con una base limpia (o lo que haya en la nube).
+
+5. Verificar conexión:
+   - Asegurarse de que el servicio de Supabase esté activo y no pausado.
+
+Fecha de creación: 31/12/2025
