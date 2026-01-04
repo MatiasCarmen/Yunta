@@ -83,7 +83,7 @@ export async function POST(request: Request) {
                 notes: agreements || '',
                 status: 'COMPLETED',
                 createdById: userId,
-                
+
                 // Crear asistentes si hay
                 ...(participants && participants.length > 0 && {
                     attendees: {
@@ -106,7 +106,6 @@ export async function POST(request: Request) {
             },
         });
 
-        return NextResponse.json({ success: true, meeting });
     } catch (error: any) {
         console.error('Error creando junta:', error);
         return NextResponse.json(
@@ -115,3 +114,5 @@ export async function POST(request: Request) {
         );
     }
 }
+
+export const dynamic = 'force-dynamic';

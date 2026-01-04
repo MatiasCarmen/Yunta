@@ -59,7 +59,7 @@ export function SpendingChart({ transactions }: SpendingChartProps) {
                                         color: 'hsl(var(--popover-foreground))',
                                         boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                                     }}
-                                    formatter={(value: number) => [`S/ ${value.toFixed(2)}`, 'Total']}
+                                    formatter={(value: any) => [`S/ ${Number(value).toFixed(2)}`, 'Total']}
                                 />
                                 <Bar
                                     dataKey="total"

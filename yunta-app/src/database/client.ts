@@ -1,13 +1,8 @@
 // ============================================
-// YUNTA - Prisma Client
-// ============================================
-// Cliente singleton de Prisma para Next.js
-// Evita múltiples instancias en desarrollo (hot reload)
+// YUNTA - Prisma Client (SQLite Version)
 // ============================================
 
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
 
 // Declaración global para TypeScript
 declare global {
@@ -15,19 +10,10 @@ declare global {
     var prisma: PrismaClient | undefined;
 }
 
-// ============================================
-// CONFIGURACIÓN DEL CLIENTE
-// ============================================
-
-const connectionString = process.env.DATABASE_URL!;
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
-
 /**
- * Cliente de Prisma con configuración optimizada para Prisma 7
+ * Cliente de Prisma (Standard for SQLite)
  */
 export const prisma = global.prisma || new PrismaClient({
-    adapter,
     log: process.env.NODE_ENV === 'development'
         ? ['query', 'error', 'warn']
         : ['error'],
@@ -40,28 +26,9 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // ============================================
-// MANEJO DE DESCONEXIÓN
+// UTILIDADES DB
 // ============================================
 
-/**
- * Desconecta el cliente de Prisma de forma segura
- */
-export async function disconnectPrisma() {
-    await prisma.$disconnect();
-}
-
-// Desconectar automáticamente cuando el proceso termina
-process.on('beforeExit', async () => {
-    await disconnectPrisma();
-});
-
-// ============================================
-// UTILIDADES DE BASE DE DATOS
-// ============================================
-
-/**
- * Verifica la conexión a la base de datos
- */
 export async function checkDatabaseConnection(): Promise<boolean> {
     try {
         await prisma.$queryRaw`SELECT 1`;
@@ -72,20 +39,4 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     }
 }
 
-/**
- * Obtiene información de la base de datos
- */
-export async function getDatabaseInfo() {
-    try {
-        const result = await prisma.$queryRaw<Array<{ version: string }>>`
-      SELECT version();
-    `;
-        return result[0];
-    } catch (error) {
-        console.error('Failed to get database info:', error);
-        return null;
-    }
-}
-
-// Exportar tipos de Prisma para uso en la aplicación
 export * from '@prisma/client';

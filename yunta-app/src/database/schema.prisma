@@ -12,6 +12,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -552,6 +553,8 @@ model JuntaShare {
   
   user      User?    @relation(fields: [userId], references: [id])
   
+  committedAmount Decimal @default(0) // Monto diario comprometido
+
   createdAt DateTime @default(now())
 
   // Un usuario puede tener varios turnos asignados
@@ -573,6 +576,7 @@ model JuntaTurn {
   
   expectedAmount Decimal
   status         String  @default("PENDING") // PENDING, FUNDED, PAID_OUT
+  isClosed       Boolean @default(false)
   
   payments    JuntaPayment[] // Aportes de los otros participantes para este turno
 
@@ -594,6 +598,9 @@ model JuntaPayment {
   
   status      String     @default("CONFIRMED") // PENDING_VERIFICATION, CONFIRMED
   evidenceUrl String?    // Foto del voucher
+  
+  destination String?    // CAJA_CHICA, STHEFANY_BCP, etc.
+  notes       String?    // Observaciones
 
   createdAt   DateTime @default(now())
 
