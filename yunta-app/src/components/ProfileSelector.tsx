@@ -104,8 +104,9 @@ export default function ProfileSelector({ users }: ProfileSelectorProps) {
             if (response.ok && data.success) {
                 // Login exitoso - redirigir al dashboard
                 // Guardar sesión en localStorage para persistencia básica
-                localStorage.setItem('yunta_userId', selectedUser.id);
-                localStorage.setItem('yunta_userName', selectedUser.name);
+                localStorage.setItem('yunta-user-id', selectedUser.id);
+                localStorage.setItem('yunta-user-name', selectedUser.name);
+                localStorage.setItem('yunta-user-role', selectedUser.role);
                 router.push('/dashboard');
             } else {
                 // Login fallido

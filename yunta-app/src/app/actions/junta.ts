@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import {
     Junta, JuntaShare, JuntaTurn, JuntaPayment, Prisma, $Enums
 } from '@prisma/client';
+import { addDays, differenceInCalendarDays, startOfDay, startOfToday } from 'date-fns';
 
 // --- TYPES TO MATCH FRONTEND ---
 
@@ -50,6 +51,39 @@ export type JuntaState = {
         from: string;
         to: string;
     };
+};
+
+export type KardexDay = {
+    date: string;
+    dayNumber: number;
+    expected: number;
+    paid: number;
+    balanceAfter: number;
+    status: 'COMPLETED' | 'PARTIAL' | 'MISSING' | 'FUTURE';
+    transactions: Array<{
+        id: string;
+        amount: number;
+        method: PaymentMethod;
+        destination: string | null;
+        notes: string | null;
+        paidAt: string;
+    }>;
+};
+
+export type KardexStats = {
+    totalPaid: number;
+    totalExpectedUntilToday: number;
+    complianceRate: number;
+    globalDebt: number;
+    nextTurnDate: string | null;
+};
+
+export type KardexReport = {
+    participantId: string;
+    participantName: string;
+    days: KardexDay[];
+    stats: KardexStats;
+    trend: Array<{ date: string; balance: number }>;
 };
 
 // --- ACTIONS ---
@@ -153,7 +187,7 @@ export async function getActiveJunta() {
         const schedule = juntaDB.turns.map(t => ({
             date: t.date.toISOString().split('T')[0], // YYYY-MM-DD
             beneficiaryId: t.beneficiaryId,
-            isClosed: false // TODO: Add isClosed field to Turn model if needed, or use status
+            isClosed: t.isClosed
         }));
 
         // Flatten all payments into a single Ledger array
@@ -168,8 +202,8 @@ export async function getActiveJunta() {
                     participantId: p.shareId, // shareId is the participant ID here
                     amount: Number(p.amount),
                     method: p.method,
-                    destination: 'CAJA_CHICA', // TODO: Add destination to Schema?
-                    notes: '', // TODO: Add notes to Schema?
+                    destination: p.destination || 'CAJA_CHICA',
+                    notes: p.notes || '',
                     isCorrection: false
                 });
             }
@@ -246,6 +280,114 @@ export async function closeDay(juntaId: string, date: string) {
     } catch (error) {
         console.error("Error closing day:", error);
         return { success: false, error: String(error) };
+    }
+}
+
+export async function getParticipantKardex(juntaId: string, participantId: string): Promise<KardexReport | null> {
+    try {
+        const juntaDB = await prisma.junta.findFirst({
+            where: { id: juntaId, status: 'ACTIVE' },
+            include: {
+                shares: true,
+                turns: {
+                    include: { payments: true },
+                    orderBy: { date: 'asc' }
+                }
+            }
+        });
+
+        if (!juntaDB) return null;
+
+        const participantShare = juntaDB.shares.find(s => s.id === participantId);
+        if (!participantShare) return null;
+
+        const shareCommitment = Number(participantShare.committedAmount);
+        const today = startOfToday();
+        const scheduleStart = startOfDay(juntaDB.startDate);
+
+        const turnByDate = new Map<string, typeof juntaDB.turns[number]>();
+        for (const turn of juntaDB.turns) {
+            const key = turn.date.toISOString().split('T')[0];
+            turnByDate.set(key, turn);
+        }
+
+        let cumulativeBalance = 0;
+        let perfectDays = 0;
+        let daysConsidered = 0;
+        let totalPaid = 0;
+        let totalExpected = 0;
+        let globalDebt = 0;
+
+        const days: KardexDay[] = [];
+
+        for (let i = 0; i < juntaDB.duration; i++) {
+            const currentDate = addDays(scheduleStart, i);
+            const dateKey = currentDate.toISOString().split('T')[0];
+            const isFuture = differenceInCalendarDays(currentDate, today) > 0;
+            const turn = turnByDate.get(dateKey);
+
+            const dayPayments = turn?.payments.filter(p => p.shareId === participantShare.id) ?? [];
+            const paid = dayPayments.reduce((acc, p) => acc + Number(p.amount), 0);
+            const expected = shareCommitment;
+            const diff = expected - paid;
+
+            let status: KardexDay['status'] = 'MISSING';
+            if (isFuture) status = 'FUTURE';
+            else if (paid >= expected) {
+                status = 'COMPLETED';
+                perfectDays++;
+            } else if (paid > 0) {
+                status = 'PARTIAL';
+            }
+
+            if (!isFuture) {
+                daysConsidered++;
+                totalExpected += expected;
+                if (diff > 0) globalDebt += diff;
+            }
+
+            totalPaid += paid;
+            cumulativeBalance += paid - expected;
+
+            days.push({
+                date: dateKey,
+                dayNumber: i + 1,
+                expected,
+                paid,
+                balanceAfter: Number(cumulativeBalance.toFixed(2)),
+                status,
+                transactions: dayPayments.map(p => ({
+                    id: p.id,
+                    amount: Number(p.amount),
+                    method: p.method,
+                    destination: p.destination,
+                    notes: p.notes,
+                    paidAt: p.paidAt.toISOString()
+                }))
+            });
+        }
+
+        const complianceRate = daysConsidered === 0 ? 0 : Math.round((perfectDays / daysConsidered) * 100);
+        const nextTurn = juntaDB.turns.find(turn => turn.beneficiaryId === participantShare.id && differenceInCalendarDays(turn.date, today) >= 0);
+
+        const trend = days.map(day => ({ date: day.date, balance: day.balanceAfter }));
+
+        return {
+            participantId: participantShare.id,
+            participantName: participantShare.guestName || 'Sin Nombre',
+            days,
+            stats: {
+                totalPaid,
+                totalExpectedUntilToday: totalExpected,
+                complianceRate,
+                globalDebt: Number(globalDebt.toFixed(2)),
+                nextTurnDate: nextTurn ? nextTurn.date.toISOString().split('T')[0] : null
+            },
+            trend
+        };
+    } catch (error) {
+        console.error('Error fetching kardex:', error);
+        return null;
     }
 }
 

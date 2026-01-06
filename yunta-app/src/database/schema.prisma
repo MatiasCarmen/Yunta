@@ -530,13 +530,19 @@ model Junta {
   frequency   String    @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
   duration    Int       // Duración en periodos (días, semanas...)
   
-  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED, ARCHIVED
 
   adminId     String
   admin       User      @relation("JuntaAdmin", fields: [adminId], references: [id])
   
   shares      JuntaShare[]
   turns       JuntaTurn[]
+
+  // Campos para archivo y reporte final
+  archivedAt   DateTime? // Fecha cuando se archivó la junta
+  endedAt      DateTime? // Fecha real de finalización
+  archiveReason String?  // Motivo del archivo (opcional)
+  finalReportJson String? // JSON con reporte completo al archivar
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

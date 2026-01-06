@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Componentes UI
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,8 @@ import {
     Banknote,
     Package,
     Sparkles,
-    Loader2
+    Loader2,
+    LogOut
 } from 'lucide-react';
 
 // --- TIPOS ---
@@ -321,6 +323,7 @@ function TransactionList({ transactions }: { transactions: Transaction[] }) {
 // --- COMPONENTE PRINCIPAL (DASHBOARD) ---
 
 export default function Dashboard() {
+    const router = useRouter();
     const [user, setUser] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -333,6 +336,17 @@ export default function Dashboard() {
         junta: 0
     });
 
+    // Función para cerrar sesión
+    const handleLogout = () => {
+        // Limpiar localStorage
+        localStorage.removeItem('yunta-user-id');
+        localStorage.removeItem('yunta-user-name');
+        localStorage.removeItem('yunta-user-role');
+        
+        // Redirigir al login
+        router.push('/');
+    };
+
     useEffect(() => {
         // 1. Cargar Usuario
         if (typeof window !== 'undefined') {
@@ -344,7 +358,15 @@ export default function Dashboard() {
         // 2. Cargar Datos de API
         const fetchData = async () => {
             try {
-                const res = await fetch('/api/transactions?limit=50');
+                // Obtener userId del localStorage
+                const userId = localStorage.getItem('yunta-user-id');
+                if (!userId) {
+                    console.warn('No userId found, skipping transaction fetch');
+                    setLoading(false);
+                    return;
+                }
+                
+                const res = await fetch(`/api/transactions?userId=${userId}&limit=50`);
                 const data = await res.json();
 
                 if (data && (data.data || Array.isArray(data))) {
@@ -410,9 +432,19 @@ export default function Dashboard() {
                             Nuevo Movimiento
                         </Link>
                     </Button>
-                    <Button variant="outline" className="flex-1 sm:flex-none h-11 border-primary/20 hover:bg-primary/5 text-primary">
-                        <Users className="mr-2 h-5 w-5" />
-                        Ver Junta
+                    <Button asChild variant="outline" className="flex-1 sm:flex-none h-11 border-primary/20 hover:bg-primary/5 text-primary">
+                        <Link href="/dashboard/junta">
+                            <Users className="mr-2 h-5 w-5" />
+                            Ver Junta
+                        </Link>
+                    </Button>
+                    <Button 
+                        onClick={handleLogout}
+                        variant="outline" 
+                        className="h-11 px-3 border-red-200 hover:bg-red-50 hover:text-red-600 text-red-500"
+                        title="Cerrar Sesión"
+                    >
+                        <LogOut className="h-5 w-5" />
                     </Button>
                 </div>
             </div>
