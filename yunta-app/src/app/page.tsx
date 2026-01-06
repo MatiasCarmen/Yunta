@@ -72,8 +72,17 @@ export default async function LoginPage() {
 
   // Pasar usuarios al componente cliente interactivo
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="w-full max-w-4xl px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F5E8] px-4">
+      {/* Logo de Yunta */}
+      <div className="mb-8">
+        <img 
+          src="/logo-yunta.png" 
+          alt="Yunta - Finanzas en Familia" 
+          className="w-48 h-auto drop-shadow-lg"
+        />
+      </div>
+      
+      <div className="w-full max-w-2xl">
         <ProfileSelector users={users} />
       </div>
     </div>

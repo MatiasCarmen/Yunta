@@ -45,6 +45,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { LoadingScreen } from '@/components/ui/loading-screen';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -142,6 +143,10 @@ export default function JuntaPage() {
     type: 'success' | 'error' | 'info';
   } | null>(null);
   const [inputValue, setInputValue] = useState('');
+  const [loadingState, setLoadingState] = useState<{ isLoading: boolean; message: string }>({ 
+    isLoading: false, 
+    message: 'Procesando...' 
+  });
 
   useEffect(() => {
     const loadData = async () => {
@@ -175,8 +180,15 @@ export default function JuntaPage() {
         setConfirmDialog(null);
         setInputValue('');
         
+        setLoadingState({ isLoading: true, message: 'Archivando junta y generando reporte...' });
+        
         try {
-          const result = await archiveJunta(junta.id, reason);
+          const [result] = await Promise.all([
+            archiveJunta(junta.id, reason),
+            new Promise(resolve => setTimeout(resolve, 1500)) // Delay mínimo para ver la animación
+          ]);
+          setLoadingState({ isLoading: false, message: '' });
+          
           if (result.success) {
             setAlertDialog({
               isOpen: true,
@@ -212,9 +224,16 @@ export default function JuntaPage() {
   };
 
   const handleViewArchived = async () => {
+    setLoadingState({ isLoading: true, message: 'Cargando juntas archivadas...' });
     setView('ARCHIVED');
-    const archived = await getArchivedJuntas();
+    
+    const [archived] = await Promise.all([
+      getArchivedJuntas(),
+      new Promise(resolve => setTimeout(resolve, 1200)) // Delay mínimo
+    ]);
+    
     setArchivedJuntas(archived);
+    setLoadingState({ isLoading: false, message: '' });
   };
 
   const handleOpenKardex = async (participantId: string) => {
@@ -248,7 +267,10 @@ export default function JuntaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-2 md:p-6">
+    <>
+      <LoadingScreen isLoading={loadingState.isLoading} message={loadingState.message} />
+      
+      <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-2 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-40">
           <div className="flex items-center gap-3">
@@ -403,6 +425,7 @@ export default function JuntaPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

@@ -128,62 +128,37 @@ export default function ProfileSelector({ users }: ProfileSelectorProps) {
     if (!selectedUser) {
         return (
             <div className="text-center">
-                {/* Header */}
-                <div className="mb-12">
-                    <h1 className="text-5xl font-bold text-gray-800 mb-3">
-                        YUNTA
-                    </h1>
-                    <p className="text-xl text-gray-600">
-                        Gestión Financiera Familiar
-                    </p>
-                </div>
-
                 {/* Selector de perfiles */}
-                <div className="bg-white rounded-3xl shadow-2xl p-8">
-                    <h2 className="text-2xl font-semibold text-gray-800 mb-8">
+                <div className="bg-white rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">
                         ¿Quién eres?
                     </h2>
+                    <p className="text-sm text-gray-600 mb-6">
+                        Selecciona tu perfil para continuar
+                    </p>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-2 gap-4">
                         {users.map((user) => (
                             <button
                                 key={user.id}
                                 onClick={() => handleUserSelect(user)}
-                                className="group relative overflow-hidden rounded-2xl bg-gradient-to-br p-6 text-white transition-all hover:scale-105 hover:shadow-xl active:scale-95"
-                                style={{
-                                    backgroundImage: `linear-gradient(to bottom right, var(--tw-gradient-stops))`,
-                                }}
-                                data-role={user.role}
+                                className="flex items-center justify-center gap-2 h-14 px-6 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-medium rounded-lg transition-colors duration-200 border border-emerald-200 hover:border-emerald-300"
                             >
-                                <div className={`absolute inset-0 bg-gradient-to-br ${ROLE_COLORS[user.role]} opacity-90`} />
-
-                                <div className="relative z-10">
-                                    {/* Avatar */}
-                                    <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-                                        {user.avatar ? (
-                                            <img
-                                                src={user.avatar}
-                                                alt={user.name}
-                                                className="h-full w-full rounded-full object-cover"
-                                            />
-                                        ) : (
-                                            <span className="text-4xl font-bold">
-                                                {user.name.charAt(0).toUpperCase()}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Nombre */}
-                                    <h3 className="text-xl font-bold mb-2">{user.name}</h3>
-
-                                    {/* Rol */}
-                                    <p className="text-sm opacity-90">
-                                        {ROLE_LABELS[user.role]}
-                                    </p>
-                                </div>
-
-                                {/* Efecto hover */}
-                                <div className="absolute inset-0 bg-white opacity-0 transition-opacity group-hover:opacity-10" />
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    width="20" 
+                                    height="20" 
+                                    viewBox="0 0 24 24" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    strokeWidth="2" 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                {user.name.toUpperCase()}
                             </button>
                         ))}
                     </div>
@@ -231,7 +206,7 @@ export default function ProfileSelector({ users }: ProfileSelectorProps) {
                             value={pin}
                             onChange={(e) => handlePinChange(e.target.value)}
                             placeholder="••••"
-                            className="w-full text-center text-3xl font-bold tracking-widest px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none transition-colors"
+                            className="w-full text-center text-3xl font-bold tracking-widest px-6 py-4 border-2 border-gray-300 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
                             autoFocus
                             disabled={isLoading}
                         />
@@ -248,7 +223,7 @@ export default function ProfileSelector({ users }: ProfileSelectorProps) {
                     <button
                         type="submit"
                         disabled={pin.length < 4 || isLoading}
-                        className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95"
+                        className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95"
                     >
                         {isLoading ? 'Verificando...' : 'Ingresar'}
                     </button>
