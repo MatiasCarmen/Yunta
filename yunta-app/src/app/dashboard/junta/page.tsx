@@ -147,6 +147,30 @@ export default function JuntaPage() {
     isLoading: false, 
     message: 'Procesando...' 
   });
+  
+  // Modal de cerrar día
+  const [closeDayModal, setCloseDayModal] = useState<{
+    isOpen: boolean;
+    date: string;
+    dayInfo?: {
+      expectedAmount: number;
+      collectedAmount: number;
+      participantCount: number;
+      transactionCount: number;
+    };
+  } | null>(null);
+  
+  // Panel de problemas detectados
+  const [isProblemsModalOpen, setIsProblemsModalOpen] = useState(false);
+  const [detectedProblems, setDetectedProblems] = useState<{
+    participantsWithDebt: Array<{ name: string; debt: number; daysInDebt: number; id: string }>;
+    overdueUnlockedDays: number;
+    lowComplianceParticipants: Array<{ name: string; complianceRate: number; id: string }>;
+  }>({
+    participantsWithDebt: [],
+    overdueUnlockedDays: 0,
+    lowComplianceParticipants: []
+  });
 
   useEffect(() => {
     const loadData = async () => {
@@ -192,8 +216,8 @@ export default function JuntaPage() {
           if (result.success) {
             setAlertDialog({
               isOpen: true,
-              title: '✅ Éxito',
-              message: 'Junta archivada exitosamente',
+              title: '✅ Junta Archivada',
+              message: 'La junta se archivó correctamente y se generó el reporte final.',
               type: 'success'
             });
             setTimeout(() => {
@@ -204,17 +228,18 @@ export default function JuntaPage() {
           } else {
             setAlertDialog({
               isOpen: true,
-              title: '❌ Error',
-              message: 'Error al archivar: ' + result.error,
+              title: '❌ Error al Archivar',
+              message: result.error || 'Ocurrió un error al archivar la junta',
               type: 'error'
             });
             setTimeout(() => setAlertDialog(null), 3000);
           }
         } catch (error) {
+          setLoadingState({ isLoading: false, message: '' });
           setAlertDialog({
             isOpen: true,
-            title: '❌ Error',
-            message: 'Error al archivar la junta',
+            title: '❌ Error Inesperado',
+            message: 'No se pudo completar la operación de archivo',
             type: 'error'
           });
           setTimeout(() => setAlertDialog(null), 3000);
@@ -266,6 +291,88 @@ export default function JuntaPage() {
     setView('DASHBOARD');
   };
 
+  // Detectar problemas cuando se abre el modal
+  const handleOpenProblemsModal = () => {
+    if (!junta) return;
+    
+    setIsProblemsModalOpen(true);
+    
+    // Calcular problemas en tiempo real
+    if (!junta.schedule || junta.schedule.length === 0 || !junta.participants || junta.participants.length === 0) {
+      setDetectedProblems({
+        participantsWithDebt: [],
+        overdueUnlockedDays: 0,
+        lowComplianceParticipants: []
+      });
+      return;
+    }
+
+    const today = startOfToday();
+    
+    try {
+      const participantsWithDebt = junta.participants
+        .map(p => {
+          const totalExpected = junta.schedule
+            .filter(day => day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today)))
+            .reduce((sum, day) => {
+              if (!day.expectedAmounts || typeof day.expectedAmounts !== 'object') return sum;
+              return sum + (day.expectedAmounts[p.id] || 0);
+            }, 0);
+          
+          const totalPaid = junta.schedule
+            .filter(day => day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today)))
+            .reduce((sum, day) => {
+              if (!day.collectedAmounts || typeof day.collectedAmounts !== 'object') return sum;
+              return sum + (day.collectedAmounts[p.id] || 0);
+            }, 0);
+          
+          const debt = totalExpected - totalPaid;
+          const daysInDebt = p.dailyCommitment > 0 ? Math.floor(debt / p.dailyCommitment) : 0;
+          
+          return { id: p.id, name: p.name, debt, daysInDebt };
+        })
+        .filter(p => p.daysInDebt >= 3);
+
+      const lowComplianceParticipants = junta.participants
+        .map(p => {
+          const completedDays = junta.schedule.filter(day => {
+            if (!day.expectedAmounts || !day.collectedAmounts) return false;
+            const expected = day.expectedAmounts[p.id] || 0;
+            const collected = day.collectedAmounts[p.id] || 0;
+            return collected >= expected;
+          }).length;
+          
+          const totalActiveDays = junta.schedule.filter(day => 
+            day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today))
+          ).length;
+          
+          const complianceRate = totalActiveDays > 0 ? (completedDays / totalActiveDays) * 100 : 100;
+          
+          return { id: p.id, name: p.name, complianceRate };
+        })
+        .filter(p => p.complianceRate < 70);
+
+      const overdueUnlockedDays = junta.schedule.filter(day => {
+        if (!day || !day.date) return false;
+        const dayDate = parseISO(day.date);
+        return isBefore(dayDate, today) && !day.isLocked;
+      });
+
+      setDetectedProblems({
+        participantsWithDebt,
+        overdueUnlockedDays: overdueUnlockedDays.length,
+        lowComplianceParticipants
+      });
+    } catch (error) {
+      console.error('Error al detectar problemas:', error);
+      setDetectedProblems({
+        participantsWithDebt: [],
+        overdueUnlockedDays: 0,
+        lowComplianceParticipants: []
+      });
+    }
+  };
+
   return (
     <>
       <LoadingScreen isLoading={loadingState.isLoading} message={loadingState.message} />
@@ -292,6 +399,17 @@ export default function JuntaPage() {
           <div className="flex items-center gap-3">
             {view === 'DASHBOARD' && (
               <>
+                {/* Botón de Alertas/Problemas */}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleOpenProblemsModal}
+                  className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                >
+                  <AlertTriangle className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Ver Alertas</span>
+                </Button>
+                
                 <Button 
                   variant="default" 
                   size="sm" 
@@ -420,6 +538,275 @@ export default function JuntaPage() {
               >
                 Entendido
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Panel de Problemas/Alertas */}
+        {isProblemsModalOpen && junta && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setIsProblemsModalOpen(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-6 flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <AlertTriangle className="h-6 w-6" />
+                    Panel de Alertas
+                  </h2>
+                  <p className="text-amber-100 text-sm mt-1">
+                    Problemas detectados en la junta actual
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setIsProblemsModalOpen(false)} 
+                  className="text-white hover:bg-white/20 p-2 rounded-lg transition"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              {/* Contenido */}
+              <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)] space-y-6">
+                {/* Estado Global */}
+                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
+                  <div>
+                    <p className="text-sm text-slate-500">Total de Problemas Detectados</p>
+                    <p className="text-3xl font-bold text-slate-900 mt-1">
+                      {detectedProblems.participantsWithDebt.length + 
+                       detectedProblems.lowComplianceParticipants.length + 
+                       (detectedProblems.overdueUnlockedDays > 0 ? 1 : 0)}
+                    </p>
+                  </div>
+                  {(detectedProblems.participantsWithDebt.length + 
+                    detectedProblems.lowComplianceParticipants.length + 
+                    detectedProblems.overdueUnlockedDays) === 0 && (
+                    <div className="flex items-center gap-2 text-emerald-600">
+                      <CheckCircle2 className="h-8 w-8" />
+                      <span className="font-semibold">Todo en orden</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Participantes con Deuda Alta */}
+                {detectedProblems.participantsWithDebt.length > 0 && (
+                  <Card className="border-l-4 border-l-red-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2 text-red-700">
+                        <AlertTriangle className="h-5 w-5" />
+                        Participantes con Deuda Alta (≥3 días)
+                      </CardTitle>
+                      <CardDescription>
+                        Estos participantes tienen deudas significativas que requieren atención
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {detectedProblems.participantsWithDebt.map(p => (
+                          <div key={p.id} className="flex items-center justify-between bg-red-50 p-4 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-slate-900">{p.name}</p>
+                              <p className="text-sm text-slate-600">
+                                Deuda: <span className="font-mono font-bold text-red-600">S/ {p.debt.toFixed(2)}</span> ({p.daysInDebt} días)
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setIsProblemsModalOpen(false);
+                                handleOpenKardex(p.id);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver Historial
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Participantes con Bajo Cumplimiento */}
+                {detectedProblems.lowComplianceParticipants.length > 0 && (
+                  <Card className="border-l-4 border-l-amber-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
+                        <AlertTriangle className="h-5 w-5" />
+                        Bajo Cumplimiento (&lt;70%)
+                      </CardTitle>
+                      <CardDescription>
+                        Participantes con porcentaje de cumplimiento por debajo del estándar
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {detectedProblems.lowComplianceParticipants.map(p => (
+                          <div key={p.id} className="flex items-center justify-between bg-amber-50 p-4 rounded-lg">
+                            <div>
+                              <p className="font-semibold text-slate-900">{p.name}</p>
+                              <p className="text-sm text-slate-600">
+                                Cumplimiento: <span className="font-mono font-bold text-amber-600">{p.complianceRate.toFixed(1)}%</span>
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => {
+                                setIsProblemsModalOpen(false);
+                                handleOpenKardex(p.id);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver Historial
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Días sin Cerrar */}
+                {detectedProblems.overdueUnlockedDays > 0 && (
+                  <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                        <Clock className="h-5 w-5" />
+                        Días Pasados Sin Cerrar
+                      </CardTitle>
+                      <CardDescription>
+                        Hay días vencidos que aún no han sido cerrados
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-slate-700">
+                          <span className="font-bold text-2xl text-blue-600">{detectedProblems.overdueUnlockedDays}</span> día{detectedProblems.overdueUnlockedDays > 1 ? 's' : ''} sin cerrar
+                        </p>
+                        <p className="text-sm text-slate-600 mt-2">
+                          Revisa la tabla de cronograma y cierra los días completados para mantener el registro actualizado.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Mensaje cuando no hay problemas */}
+                {detectedProblems.participantsWithDebt.length === 0 && 
+                 detectedProblems.lowComplianceParticipants.length === 0 && 
+                 detectedProblems.overdueUnlockedDays === 0 && (
+                  <div className="text-center py-12">
+                    <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">¡Todo en Orden!</h3>
+                    <p className="text-slate-600">
+                      No se detectaron problemas en la junta actual. Todos los participantes están al día.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="bg-slate-50 px-6 py-4 flex gap-3 justify-end border-t">
+                <Button 
+                  variant="default" 
+                  onClick={() => setIsProblemsModalOpen(false)}
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Cerrar Día */}
+        {closeDayModal && closeDayModal.isOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+              {/* Header */}
+              <div className="flex items-start gap-3">
+                <div className="p-3 rounded-full bg-amber-100">
+                  <Lock className="w-6 h-6 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-slate-900">¿Cerrar Día?</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    {format(parseISO(closeDayModal.date), "EEEE, dd 'de' MMMM", { locale: es })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Información del Día */}
+              {closeDayModal.dayInfo && (
+                <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                  <h4 className="font-semibold text-slate-900 text-sm">Resumen del Día</h4>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white p-3 rounded-lg">
+                      <p className="text-xs text-slate-500">Esperado</p>
+                      <p className="text-lg font-bold text-slate-900">
+                        S/ {closeDayModal.dayInfo.expectedAmount.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg">
+                      <p className="text-xs text-slate-500">Recaudado</p>
+                      <p className="text-lg font-bold text-emerald-600">
+                        S/ {closeDayModal.dayInfo.collectedAmount.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 text-sm">
+                    <div>
+                      <span className="text-slate-500">Participantes:</span>
+                      <span className="font-semibold text-slate-900 ml-1">
+                        {closeDayModal.dayInfo.participantCount}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Transacciones:</span>
+                      <span className="font-semibold text-slate-900 ml-1">
+                        {closeDayModal.dayInfo.transactionCount}
+                      </span>
+                    </div>
+                  </div>
+
+                  {closeDayModal.dayInfo.collectedAmount < closeDayModal.dayInfo.expectedAmount && (
+                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                      <p className="text-xs text-amber-800 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Faltan S/ {(closeDayModal.dayInfo.expectedAmount - closeDayModal.dayInfo.collectedAmount).toFixed(2)} por recaudar
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Advertencia */}
+              <div className="bg-rose-50 border border-rose-200 p-4 rounded-lg">
+                <p className="text-sm text-rose-800">
+                  <strong>⚠️ Advertencia:</strong> Al cerrar este día, no se podrán realizar más ediciones simples. 
+                  Solo un administrador podrá reabrirlo.
+                </p>
+              </div>
+
+              {/* Botones */}
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setCloseDayModal(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={confirmCloseDay}
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Cerrar Día
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -705,6 +1092,37 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
   const [expandedDate, setExpandedDate] = useState<string>(initialDate);
   const [showPayModal, setShowPayModal] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // Modal de cerrar día
+  const [closeDayModal, setCloseDayModal] = useState<{
+    isOpen: boolean;
+    date: string;
+    dayInfo?: {
+      expectedAmount: number;
+      collectedAmount: number;
+      participantCount: number;
+      transactionCount: number;
+    };
+  } | null>(null);
+  
+  // Modal de reabrir día
+  const [reopenDayModal, setReopenDayModal] = useState<{
+    isOpen: boolean;
+    date: string;
+  } | null>(null);
+  
+  // Estado para alertas
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+  } | null>(null);
+  
+  const [loadingState, setLoadingState] = useState<{ isLoading: boolean; message: string }>({ 
+    isLoading: false, 
+    message: 'Procesando...' 
+  });
 
   const handleAddTransaction = async (txData: TransactionInput) => {
     try {
@@ -720,15 +1138,106 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
   };
 
   const handleCloseDay = async (date: string) => {
-    if (!confirm("¿CERRAR DÍA? Esto bloqueará ediciones simples para este día.")) return;
+    // Calcular información del día
+    const daySchedule = junta.schedule.find(d => d.date === date);
+    if (!daySchedule) return;
+
+    const expectedAmount = daySchedule.expectedAmounts && typeof daySchedule.expectedAmounts === 'object' 
+      ? Object.values(daySchedule.expectedAmounts).reduce((sum, val) => sum + (val || 0), 0)
+      : 0;
+    
+    const collectedAmount = daySchedule.collectedAmounts && typeof daySchedule.collectedAmounts === 'object'
+      ? Object.values(daySchedule.collectedAmounts).reduce((sum, val) => sum + (val || 0), 0)
+      : 0;
+    
+    const participantCount = junta.participants?.length || 0;
+    const transactionCount = daySchedule.transactions?.length || 0;
+
+    // Mostrar modal de confirmación
+    setCloseDayModal({
+      isOpen: true,
+      date,
+      dayInfo: {
+        expectedAmount,
+        collectedAmount,
+        participantCount,
+        transactionCount
+      }
+    });
+  };
+
+  const confirmCloseDay = async () => {
+    if (!closeDayModal) return;
 
     try {
-      await closeDay(junta.id, date);
+      setCloseDayModal(null);
+      setLoadingState({ isLoading: true, message: 'Cerrando día...' });
+      
+      await closeDay(junta.id, closeDayModal.date);
       const updated = await getActiveJunta();
+      
+      setLoadingState({ isLoading: false, message: '' });
+      
       if (updated) onUpdate(updated);
+      
+      setAlertDialog({
+        isOpen: true,
+        title: '✅ Día Cerrado',
+        message: 'El día se cerró correctamente. Ya no se pueden editar los registros.',
+        type: 'success'
+      });
+      setTimeout(() => setAlertDialog(null), 2500);
     } catch (error) {
       console.error('Error closing day:', error);
-      alert('Error al cerrar el día');
+      setLoadingState({ isLoading: false, message: '' });
+      setAlertDialog({
+        isOpen: true,
+        title: '❌ Error',
+        message: 'No se pudo cerrar el día. Intenta nuevamente.',
+        type: 'error'
+      });
+      setTimeout(() => setAlertDialog(null), 3000);
+    }
+  };
+
+  const handleReopenDay = async (date: string) => {
+    setReopenDayModal({
+      isOpen: true,
+      date
+    });
+  };
+
+  const confirmReopenDay = async () => {
+    if (!reopenDayModal) return;
+
+    try {
+      setReopenDayModal(null);
+      setLoadingState({ isLoading: true, message: 'Reabriendo día...' });
+      
+      await closeDay(junta.id, reopenDayModal.date); // toggle
+      const updated = await getActiveJunta();
+      
+      setLoadingState({ isLoading: false, message: '' });
+      
+      if (updated) onUpdate(updated);
+      
+      setAlertDialog({
+        isOpen: true,
+        title: '✅ Día Reabierto',
+        message: 'El día se reabrió correctamente. Ahora puedes realizar correcciones.',
+        type: 'success'
+      });
+      setTimeout(() => setAlertDialog(null), 2500);
+    } catch (error) {
+      console.error('Error reopening day:', error);
+      setLoadingState({ isLoading: false, message: '' });
+      setAlertDialog({
+        isOpen: true,
+        title: '❌ Error',
+        message: 'No se pudo reabrir el día. Intenta nuevamente.',
+        type: 'error'
+      });
+      setTimeout(() => setAlertDialog(null), 3000);
     }
   };
 
@@ -780,6 +1289,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
                 onExpand={() => setExpandedDate(day.date)}
                 onBeneficiaryChange={handleBeneficiaryChange}
                 onCloseDay={handleCloseDay}
+                onReopenDay={handleReopenDay}
                 onShowPayModal={setShowPayModal}
               />
             );
@@ -808,6 +1318,173 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
       )}
 
       {showHistory && <HistoryModal junta={junta} onClose={() => setShowHistory(false)} />}
+      
+      {/* Loading Screen */}
+      <LoadingScreen isLoading={loadingState.isLoading} message={loadingState.message} />
+      
+      {/* Modal de Alerta */}
+      {alertDialog && alertDialog.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-full ${
+                alertDialog.type === 'success' ? 'bg-green-100' :
+                alertDialog.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
+              }`}>
+                {alertDialog.type === 'success' && <CheckCircle2 className="w-6 h-6 text-green-600" />}
+                {alertDialog.type === 'error' && <AlertTriangle className="w-6 h-6 text-red-600" />}
+                {alertDialog.type === 'info' && <AlertTriangle className="w-6 h-6 text-blue-600" />}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-slate-900">{alertDialog.title}</h3>
+                <p className="text-slate-600 text-sm mt-1">{alertDialog.message}</p>
+              </div>
+            </div>
+            <Button 
+              className="w-full"
+              onClick={() => setAlertDialog(null)}
+            >
+              Entendido
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Cerrar Día */}
+      {closeDayModal && closeDayModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className="p-3 rounded-full bg-amber-100">
+                <Lock className="w-6 h-6 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-slate-900">¿Cerrar Día?</h3>
+                <p className="text-slate-600 text-sm mt-1">
+                  {format(parseISO(closeDayModal.date), "EEEE, dd 'de' MMMM", { locale: es })}
+                </p>
+              </div>
+            </div>
+
+            {closeDayModal.dayInfo && (
+              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                <h4 className="font-semibold text-slate-900 text-sm">Resumen del Día</h4>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white p-3 rounded-lg">
+                    <p className="text-xs text-slate-500">Esperado</p>
+                    <p className="text-lg font-bold text-slate-900">
+                      S/ {closeDayModal.dayInfo.expectedAmount.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <p className="text-xs text-slate-500">Recaudado</p>
+                    <p className="text-lg font-bold text-emerald-600">
+                      S/ {closeDayModal.dayInfo.collectedAmount.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-500">Participantes:</span>
+                    <span className="font-semibold text-slate-900 ml-1">
+                      {closeDayModal.dayInfo.participantCount}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Transacciones:</span>
+                    <span className="font-semibold text-slate-900 ml-1">
+                      {closeDayModal.dayInfo.transactionCount}
+                    </span>
+                  </div>
+                </div>
+
+                {closeDayModal.dayInfo.collectedAmount < closeDayModal.dayInfo.expectedAmount && (
+                  <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                    <p className="text-xs text-amber-800 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4" />
+                      Faltan S/ {(closeDayModal.dayInfo.expectedAmount - closeDayModal.dayInfo.collectedAmount).toFixed(2)} por recaudar
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="bg-rose-50 border border-rose-200 p-4 rounded-lg">
+              <p className="text-sm text-rose-800">
+                <strong>⚠️ Advertencia:</strong> Al cerrar este día, no se podrán realizar más ediciones simples. 
+                Solo un administrador podrá reabrirlo.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setCloseDayModal(null)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={confirmCloseDay}
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                Cerrar Día
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de Reabrir Día */}
+      {reopenDayModal && reopenDayModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-start gap-3">
+              <div className="p-3 rounded-full bg-blue-100">
+                <Unlock className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-slate-900">¿Reabrir Día?</h3>
+                <p className="text-slate-600 text-sm mt-1">
+                  {format(parseISO(reopenDayModal.date), "EEEE, dd 'de' MMMM", { locale: es })}
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>ℹ️ Información:</strong> Al reabrir este día, podrás realizar correcciones y ediciones en los registros.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+              <p className="text-sm text-amber-800">
+                <strong>⚠️ Advertencia:</strong> Esta es una acción administrativa. Asegúrate de volver a cerrar el día una vez completadas las correcciones.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setReopenDayModal(null)}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={confirmReopenDay}
+              >
+                <Unlock className="w-4 h-4 mr-2" />
+                Reabrir Día
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -851,10 +1528,11 @@ interface DayCardProps {
   onExpand: () => void;
   onBeneficiaryChange: (date: string, newId: string) => void;
   onCloseDay: (date: string) => void;
+  onReopenDay: (date: string) => void;
   onShowPayModal: (id: string) => void;
 }
 
-function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, statusLabel, dayTxs, junta, onExpand, onBeneficiaryChange, onCloseDay, onShowPayModal }: DayCardProps) {
+function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, statusLabel, dayTxs, junta, onExpand, onBeneficiaryChange, onCloseDay, onReopenDay, onShowPayModal }: DayCardProps) {
   return (
     <div className={cn(
       "rounded-xl border transition-all duration-300 overflow-hidden shadow-sm",
@@ -986,11 +1664,7 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
               </Button>
             )}
             {day.isClosed && (
-              <Button variant="outline" size="sm" onClick={async () => {
-                if (confirm("¿Reabrir día para correcciones?")) {
-                  await onCloseDay(day.date); // closeDay es toggle, reabre si está cerrado
-                }
-              }}>
+              <Button variant="outline" size="sm" onClick={() => onReopenDay(day.date)}>
                 <Unlock className="w-3 h-3 mr-2" /> Reabrir (Admin)
               </Button>
             )}
