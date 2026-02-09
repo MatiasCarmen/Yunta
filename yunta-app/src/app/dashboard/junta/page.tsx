@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -11,7 +11,7 @@ import { es } from 'date-fns/locale';
 import {
   Users, Calendar, History, CheckCircle2, ChevronLeft,
   Banknote, Plus, Trash2,
-  Wand2, ArrowRight, Loader2, Wallet, Shield, ChevronDown, ChevronUp,
+  Wand2, ArrowRight, Loader2, Wallet, ChevronDown, ChevronUp,
   Calculator, Clock, Eye, Lock, Unlock, Download, FileText, AlertTriangle, Settings, X, ArrowLeft, RotateCcw, Archive, FolderArchive
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, CartesianGrid, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts';
@@ -57,6 +57,25 @@ const generateUUID = () => crypto.randomUUID();
 const formatDateKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
 type DayStatus = 'PENDIENTE' | 'PARCIAL' | 'COMPLETO' | 'VENCIDO' | 'ADELANTADO';
+
+type DaySchedule = {
+  date: string;
+  beneficiaryId: string | null;
+  isClosed: boolean;
+  isLocked?: boolean;
+  expectedAmounts?: Record<string, number>;
+  collectedAmounts?: Record<string, number>;
+  transactions?: Array<{
+    id: string;
+    participantId: string;
+    amount: number;
+    createdAt: string;
+    targetDate: string;
+    method: string;
+    destination: string | null;
+    notes: string | null;
+  }>;
+};
 
 const getDayStatusLabel = (
   expected: number,
@@ -117,15 +136,13 @@ export default function JuntaPage() {
   const [view, setView] = useState<'CONFIG' | 'DASHBOARD' | 'LOADING' | 'ARCHIVED'>('LOADING');
   const [junta, setJunta] = useState<JuntaState | null>(null);
   const [kardexReport, setKardexReport] = useState<KardexReport | null>(null);
-  const [activeKardexParticipant, setActiveKardexParticipant] = useState<string | null>(null);
   const [isKardexOpen, setIsKardexOpen] = useState(false);
   const [isLoadingKardex, setIsLoadingKardex] = useState(false);
   const [kardexError, setKardexError] = useState<string | null>(null);
 
   // Estados para juntas archivadas
   const [archivedJuntas, setArchivedJuntas] = useState<ArchivedJuntaSummary[]>([]);
-  const [selectedArchiveReport, setSelectedArchiveReport] = useState<JuntaFinalReport | null>(null);
-  const [isArchiveReportOpen, setIsArchiveReportOpen] = useState(false);
+
 
   // Estados para diálogos personalizados
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -235,6 +252,7 @@ export default function JuntaPage() {
             setTimeout(() => setAlertDialog(null), 3000);
           }
         } catch (error) {
+          console.error("Error cargando junta:", error);
           setLoadingState({ isLoading: false, message: '' });
           setAlertDialog({
             isOpen: true,
@@ -261,10 +279,43 @@ export default function JuntaPage() {
     setLoadingState({ isLoading: false, message: '' });
   };
 
+  const confirmCloseDay = async () => {
+    if (!closeDayModal || !junta) return;
+
+    try {
+      setCloseDayModal(null);
+      setLoadingState({ isLoading: true, message: 'Cerrando día...' });
+      
+      await closeDay(junta.id, closeDayModal.date);
+      const updated = await getActiveJunta();
+      
+      setLoadingState({ isLoading: false, message: '' });
+      
+      if (updated) setJunta(updated);
+      
+      setAlertDialog({
+        isOpen: true,
+        title: '✅ Día Cerrado',
+        message: 'El día se cerró correctamente.',
+        type: 'success'
+      });
+      setTimeout(() => setAlertDialog(null), 2500);
+    } catch (error) {
+      console.error('Error closing day:', error);
+      setLoadingState({ isLoading: false, message: '' });
+      setAlertDialog({
+        isOpen: true,
+        title: '❌ Error',
+        message: 'No se pudo cerrar el día.',
+        type: 'error'
+      });
+      setTimeout(() => setAlertDialog(null), 3000);
+    }
+  };
+
   const handleOpenKardex = async (participantId: string) => {
     if (!junta) return;
     setIsKardexOpen(true);
-    setActiveKardexParticipant(participantId);
     setKardexReport(null);
     setKardexError(null);
     setIsLoadingKardex(true);
@@ -281,7 +332,6 @@ export default function JuntaPage() {
 
   const handleCloseKardex = () => {
     setIsKardexOpen(false);
-    setActiveKardexParticipant(null);
     setKardexReport(null);
     setKardexError(null);
   };
@@ -314,14 +364,14 @@ export default function JuntaPage() {
         .map(p => {
           const totalExpected = junta.schedule
             .filter(day => day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today)))
-            .reduce((sum, day) => {
+            .reduce((sum: number, day: DaySchedule) => {
               if (!day.expectedAmounts || typeof day.expectedAmounts !== 'object') return sum;
               return sum + (day.expectedAmounts[p.id] || 0);
             }, 0);
           
           const totalPaid = junta.schedule
             .filter(day => day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today)))
-            .reduce((sum, day) => {
+            .reduce((sum: number, day: DaySchedule) => {
               if (!day.collectedAmounts || typeof day.collectedAmounts !== 'object') return sum;
               return sum + (day.collectedAmounts[p.id] || 0);
             }, 0);
@@ -335,7 +385,7 @@ export default function JuntaPage() {
 
       const lowComplianceParticipants = junta.participants
         .map(p => {
-          const completedDays = junta.schedule.filter(day => {
+          const completedDays = junta.schedule.filter((day: DaySchedule) => {
             if (!day.expectedAmounts || !day.collectedAmounts) return false;
             const expected = day.expectedAmounts[p.id] || 0;
             const collected = day.collectedAmounts[p.id] || 0;
@@ -352,7 +402,7 @@ export default function JuntaPage() {
         })
         .filter(p => p.complianceRate < 70);
 
-      const overdueUnlockedDays = junta.schedule.filter(day => {
+      const overdueUnlockedDays = junta.schedule.filter((day: DaySchedule) => {
         if (!day || !day.date) return false;
         const dayDate = parseISO(day.date);
         return isBefore(dayDate, today) && !day.isLocked;
@@ -399,6 +449,21 @@ export default function JuntaPage() {
           <div className="flex items-center gap-3">
             {view === 'DASHBOARD' && (
               <>
+                {/* Botón de Caja */}
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => {
+                    if (junta) {
+                      window.location.href = `/dashboard/junta/caja?id=${junta.id}`;
+                    }
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Wallet className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">💰 Caja</span>
+                </Button>
+                
                 {/* Botón de Alertas/Problemas */}
                 <Button 
                   variant="outline" 
@@ -835,7 +900,8 @@ function ConfigWizard({ onComplete }: { onComplete: (state: JuntaState) => void 
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'participants' });
-  const totalPot = form.watch('participants').reduce((sum, p) => sum + (Number(p.dailyCommitment) || 0), 0);
+  const participants = useWatch({ control: form.control, name: 'participants' });
+  const totalPot = participants.reduce((sum, p) => sum + (Number(p.dailyCommitment) || 0), 0);
 
   const onStep1Submit = (data: ConfigFormValues) => {
     setTempConfig(data);
@@ -966,7 +1032,7 @@ function ScheduleBuilder({
   isCreating: boolean;
   setIsCreating: (v: boolean) => void;
 }) {
-  const [schedule, setSchedule] = useState<Array<{ date: string; beneficiaryId: string | null; isClosed: boolean }>>(() => {
+  const [schedule, setSchedule] = useState<DaySchedule[]>(() => {
     const days = differenceInDays(config.dateRange.to, config.dateRange.from) + 1;
     return Array.from({ length: days }, (_, i) => ({
       date: formatDateKey(addDays(config.dateRange.from, i)),
@@ -1139,15 +1205,15 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
 
   const handleCloseDay = async (date: string) => {
     // Calcular información del día
-    const daySchedule = junta.schedule.find(d => d.date === date);
+    const daySchedule = junta.schedule.find(d => d.date === date) as DaySchedule | undefined;
     if (!daySchedule) return;
 
     const expectedAmount = daySchedule.expectedAmounts && typeof daySchedule.expectedAmounts === 'object' 
-      ? Object.values(daySchedule.expectedAmounts).reduce((sum, val) => sum + (val || 0), 0)
+      ? Object.values(daySchedule.expectedAmounts).reduce((sum: number, val) => sum + (val || 0), 0)
       : 0;
     
     const collectedAmount = daySchedule.collectedAmounts && typeof daySchedule.collectedAmounts === 'object'
-      ? Object.values(daySchedule.collectedAmounts).reduce((sum, val) => sum + (val || 0), 0)
+      ? Object.values(daySchedule.collectedAmounts).reduce((sum: number, val) => sum + (val || 0), 0)
       : 0;
     
     const participantCount = junta.participants?.length || 0;
@@ -1508,7 +1574,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 interface DayCardProps {
-  day: { date: string; beneficiaryId: string | null; isClosed: boolean };
+  day: DaySchedule;
   isExpanded: boolean;
   beneficiary?: { name: string; id: string; dailyCommitment: number };
   dailyTotalExpected: number;
@@ -1779,18 +1845,11 @@ function CalculatorWidget() {
   );
 }
 
-const formatCurrency = (amount: number) => `S/. ${amount.toFixed(2)}`;
-
 function KardexModal({ report, loading, error, onClose }: { report: KardexReport | null; loading: boolean; error: string | null; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'kardex' | 'config'>('kardex');
-  const defaultFilters: KardexFilterState = { status: 'ALL', method: 'ALL', startDate: '', endDate: '' };
+  const defaultFilters = React.useMemo<KardexFilterState>(() => ({ status: 'ALL', method: 'ALL', startDate: '', endDate: '' }), []);
   const [filters, setFilters] = useState<KardexFilterState>(defaultFilters);
   const [exportFeedback, setExportFeedback] = useState<string | null>(null);
-
-  useEffect(() => {
-    setFilters(defaultFilters);
-    setActiveTab('kardex');
-  }, [report?.participantId]);
 
   const filteredDays = useMemo(() => {
     if (!report) return [];
@@ -1851,6 +1910,7 @@ function KardexModal({ report, loading, error, onClose }: { report: KardexReport
       setExportFeedback('✓ CSV descargado');
       setTimeout(() => setExportFeedback(null), 3000);
     } catch (error) {
+      console.error("Error exportando CSV kardex:", error);
       setExportFeedback('✗ Error al exportar');
       setTimeout(() => setExportFeedback(null), 3000);
     }
@@ -1878,9 +1938,8 @@ function KardexModal({ report, loading, error, onClose }: { report: KardexReport
         styles: { fontSize: 9 }
       });
       doc.save(`${report.participantName}-kardex.pdf`);
-      setExportFeedback('✓ PDF descargado');
-      setTimeout(() => setExportFeedback(null), 3000);
     } catch (error) {
+      console.error("Error exportando PDF:", error);
       setExportFeedback('✗ Error al exportar');
       setTimeout(() => setExportFeedback(null), 3000);
     }
@@ -2372,6 +2431,7 @@ function ArchivedJuntasView({ juntas }: { juntas: ArchivedJuntaSummary[] }) {
         alert("❌ No se pudo cargar el reporte");
       }
     } catch (error) {
+      console.error("Error cargando reporte archivado:", error);
       alert("❌ Error al cargar el reporte");
     } finally {
       setIsLoading(false);
@@ -2394,6 +2454,7 @@ function ArchivedJuntasView({ juntas }: { juntas: ArchivedJuntaSummary[] }) {
         alert("❌ Error: " + result.error);
       }
     } catch (error) {
+      console.error("Error duplicando junta:", error);
       alert("❌ Error al duplicar la junta");
     }
   };

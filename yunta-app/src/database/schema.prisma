@@ -155,6 +155,23 @@ enum PaymentMethod {
   YAPE // Yape
 }
 
+/// Cuentas de destino para pagos de junta
+enum CuentaDestino {
+  YAPE_SEBASTIAN // Yape de Sebastian
+  YAPE_PILAR // Yape de Pilar
+  YAPE_STHEFANY // Yape de Sthefany
+  TRANSFERENCIA_SEBASTIAN // Transferencia bancaria Sebastian
+  TRANSFERENCIA_STHEFANY // Transferencia bancaria Sthefany
+  EFECTIVO // Efectivo/Caja chica
+}
+
+/// Tipo de movimiento en caja
+enum TipoMovimientoCaja {
+  INGRESO // Ingreso de dinero (pago de junta recibido)
+  EGRESO // Egreso de dinero (gasto, retiro, pago a beneficiario)
+  TRANSFERENCIA // Transferencia entre cuentas
+}
+
 /// Categorías de gasto para análisis y reportes
 enum ExpenseCategory {
   FOOD // Comida y alimentos
@@ -605,10 +622,98 @@ model JuntaPayment {
   status      String     @default("CONFIRMED") // PENDING_VERIFICATION, CONFIRMED
   evidenceUrl String?    // Foto del voucher
   
-  destination String?    // CAJA_CHICA, STHEFANY_BCP, etc.
+  destination CuentaDestino?    // A qué cuenta se pagó
   notes       String?    // Observaciones
 
   createdAt   DateTime @default(now())
 
   @@map("junta_payments")
+}
+
+// ============================================
+// MODELOS DE GESTIÓN DE CAJA
+// ============================================
+
+/// Representa cada cuenta de caja (Yape, Transferencia, Efectivo)
+model CajaAccount {
+  id              String   @id @default(uuid())
+  
+  /// Tipo de cuenta
+  tipoCuenta      CuentaDestino @unique
+  
+  /// Saldo actual en la cuenta
+  saldoActual     Decimal @default(0)
+  
+  /// Umbral de alerta para saldo bajo
+  umbralAlerta    Decimal @default(100)
+  
+  /// Observaciones de la cuenta
+  notas           String?
+  
+  /// Última actualización del saldo
+  ultimaActualizacion DateTime @updatedAt
+  
+  /// Movimientos relacionados a esta cuenta
+  movimientosOrigen      CajaTransaction[] @relation("CuentaOrigen")
+  movimientosDestino     CajaTransaction[] @relation("CuentaDestino")
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("caja_accounts")
+}
+
+/// Representa cada movimiento de dinero en la caja
+model CajaTransaction {
+  id              String   @id @default(uuid())
+  
+  /// Tipo de movimiento
+  tipo            TipoMovimientoCaja
+  
+  /// Monto del movimiento
+  monto           Decimal
+  
+  /// Cuenta de origen (para egresos y transferencias)
+  cuentaOrigenId  String?
+  cuentaOrigen    CajaAccount? @relation("CuentaOrigen", fields: [cuentaOrigenId], references: [id])
+  
+  /// Cuenta de destino (para ingresos y transferencias)
+  cuentaDestinoId String?
+  cuentaDestino   CajaAccount? @relation("CuentaDestino", fields: [cuentaDestinoId], references: [id])
+  
+  /// Descripción del movimiento
+  descripcion     String
+  
+  /// Categoría (si es egreso)
+  categoria       ExpenseCategory?
+  
+  /// Beneficiario (nombre de persona que recibe el dinero en caso de egreso)
+  beneficiario    String?
+  
+  /// Referencia a pago de junta si aplica
+  juntaPaymentId  String?
+  
+  /// Referencia a turno de junta si aplica
+  juntaTurnId     String?
+  
+  /// Usuario que registró el movimiento
+  registradoPor   String?
+  
+  /// Fecha del movimiento
+  fecha           DateTime @default(now())
+  
+  /// Comprobante o evidencia
+  evidenciaUrl    String?
+  
+  /// Notas adicionales
+  notas           String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([cuentaOrigenId])
+  @@index([cuentaDestinoId])
+  @@index([fecha])
+  @@map("caja_transactions")
 }
