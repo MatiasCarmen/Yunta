@@ -2,16 +2,14 @@
 
 import { prisma } from '@/database/client';
 import { revalidatePath } from 'next/cache';
-import {
-    Junta, JuntaShare, JuntaTurn, JuntaPayment, Prisma, $Enums
-} from '@prisma/client';
+import { Prisma, $Enums } from '@prisma/client';
 import { addDays, differenceInCalendarDays, startOfDay, startOfToday } from 'date-fns';
 
 // --- TYPES TO MATCH FRONTEND ---
 
 export type PaymentMethod = $Enums.PaymentMethod;
 
-export type PaymentDestination = 'CAJA_CHICA' | 'STHEFANY_BCP' | 'PILAR' | 'SEBASTIAN';
+export type PaymentDestination = $Enums.CuentaDestino;
 
 export type TransactionInput = {
     targetDate: string;
@@ -86,9 +84,25 @@ export type KardexReport = {
     trend: Array<{ date: string; balance: number }>;
 };
 
+type CreateJuntaInput = {
+    participants: Array<{
+        id: string;
+        name: string;
+        dailyCommitment: number;
+    }>;
+    dateRange: {
+        from: string;
+        to: string;
+    };
+    schedule: Array<{
+        date: string;
+        beneficiaryId: string | null;
+    }>;
+};
+
 // --- ACTIONS ---
 
-export async function createJunta(data: any) {
+export async function createJunta(data: CreateJuntaInput) {
     try {
         console.log("Creating Junta...", data);
 
@@ -202,16 +216,20 @@ export async function getActiveJunta() {
                     participantId: p.shareId, // shareId is the participant ID here
                     amount: Number(p.amount),
                     method: p.method,
-                    destination: p.destination || 'CAJA_CHICA',
+                    destination: p.destination || 'EFECTIVO',
                     notes: p.notes || '',
                     isCorrection: false
                 });
             }
         }
 
+        const status: JuntaState['status'] = juntaDB.status === 'ACTIVE' || juntaDB.status === 'COMPLETED' || juntaDB.status === 'CANCELLED'
+            ? juntaDB.status
+            : 'ACTIVE';
+
         return {
             id: juntaDB.id,
-            status: juntaDB.status as any,
+            status,
             participants,
             schedule,
             ledger,
@@ -246,7 +264,7 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
                 turnId: turn.id,
                 shareId: txData.participantId,
                 amount: new Prisma.Decimal(txData.amount),
-                method: txData.method as any, // Cast to enum
+                method: txData.method,
                 destination: txData.destination,
                 notes: txData.notes
             }
@@ -272,7 +290,7 @@ export async function closeDay(juntaId: string, date: string) {
 
         await prisma.juntaTurn.update({
             where: { id: turn.id },
-            data: { isClosed: true } as any // Force cast to bypass TS error
+            data: { isClosed: true }
         });
 
         revalidatePath('/dashboard/junta');
@@ -399,7 +417,7 @@ export async function rescheduleTurn(juntaId: string, date: string, newBeneficia
         });
 
         if (!turn) throw new Error("Turno no encontrado.");
-        if ((turn as any).isClosed) throw new Error("No se puede cambiar un día cerrado.");
+        if (turn.isClosed) throw new Error("No se puede cambiar un día cerrado.");
 
         // Need the Share ID (DB ID) corresponding to the Beneficiary ID (could be Frontend ID if mismatched, but we assume DB ID)
         // Here we assume newBeneficiaryId passed from frontend is the DB ID (JuntaShare ID)

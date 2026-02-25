@@ -6,7 +6,6 @@ import { PrismaClient } from '@prisma/client';
 
 // Declaración global para TypeScript
 declare global {
-    // eslint-disable-next-line no-var
     var prisma: PrismaClient | undefined;
 }
 
@@ -39,4 +38,3 @@ export async function checkDatabaseConnection(): Promise<boolean> {
     }
 }
 
-export * from '@prisma/client';

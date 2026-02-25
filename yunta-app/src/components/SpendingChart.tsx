@@ -6,7 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TrendingDown } from "lucide-react";
 
 interface SpendingChartProps {
-    transactions: any[]; // Usamos any por simplicidad, idealmente tu tipo Transaction
+    transactions: Array<{
+        type: 'IN' | 'OUT';
+        category?: string;
+        amount: number | string;
+    }>;
 }
 
 export function SpendingChart({ transactions }: SpendingChartProps) {
@@ -59,7 +63,7 @@ export function SpendingChart({ transactions }: SpendingChartProps) {
                                         color: 'hsl(var(--popover-foreground))',
                                         boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                                     }}
-                                    formatter={(value: any) => [`S/ ${Number(value).toFixed(2)}`, 'Total']}
+                                    formatter={(value: number | string | undefined) => [`S/ ${Number(value ?? 0).toFixed(2)}`, 'Total']}
                                 />
                                 <Bar
                                     dataKey="total"

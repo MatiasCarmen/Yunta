@@ -7,7 +7,7 @@
 
 import { prisma } from '@/database/client';
 import ProfileSelector from '@/components/ProfileSelector';
-import { redirect } from 'next/navigation';
+import Image from 'next/image';
 
 // ============================================
 // FUNCIÓN PARA OBTENER USUARIOS (SERVER-SIDE)
@@ -75,9 +75,11 @@ export default async function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F5E8] px-4">
       {/* Logo de Yunta */}
       <div className="mb-8">
-        <img 
-          src="/logo-yunta.png" 
-          alt="Yunta - Finanzas en Familia" 
+        <Image
+          src="/logo-yunta.png"
+          alt="Yunta - Finanzas en Familia"
+          width={192}
+          height={192}
           className="w-48 h-auto drop-shadow-lg"
         />
       </div>

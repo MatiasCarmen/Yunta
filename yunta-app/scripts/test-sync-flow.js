@@ -223,7 +223,7 @@ async function runFullSyncTest() {
         return;
     }
 
-    const pendingCount = await step3_verifyLocalState();
+    await step3_verifyLocalState();
 
     if (!navigator.onLine) {
         console.log('⚠️ No hay conexión a internet');

@@ -6,6 +6,7 @@
 // ============================================
 
 import { prisma } from '../database/client';
+import type { Prisma, ExpenseCategory } from '@prisma/client';
 import type { CreateTransactionInput } from '../types/transaction';
 import type { Transaction } from '../database';
 
@@ -158,13 +159,13 @@ export async function createTransaction(
 
 export async function getTransactions(userId: string, filters?: {
     type?: 'IN' | 'OUT';
-    category?: string;
+    category?: ExpenseCategory;
     startDate?: Date;
     endDate?: Date;
     limit?: number;
 }) {
     try {
-        const where: any = { userId };
+        const where: Prisma.TransactionWhereInput = { userId };
 
         if (filters?.type) {
             where.type = filters.type;

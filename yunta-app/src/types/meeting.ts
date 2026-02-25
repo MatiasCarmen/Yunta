@@ -7,7 +7,6 @@
 import {
     Meeting,
     ActionItem,
-    MeetingAttendance,
     MeetingStatus,
     ActionItemStatus,
     ActionItemPriority,

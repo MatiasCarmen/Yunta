@@ -6,7 +6,7 @@
 // ============================================
 
 import Dexie, { type Table } from 'dexie';
-import type { Role, TransactionType, PaymentMethod, ExpenseCategory } from '@prisma/client';
+import type { TransactionType, PaymentMethod, ExpenseCategory } from '@prisma/client';
 
 // ============================================
 // INTERFACES LOCALES

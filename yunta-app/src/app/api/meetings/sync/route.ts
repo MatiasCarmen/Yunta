@@ -10,7 +10,18 @@ import { prisma } from '@/database/client';
 
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
+        const body = await request.json() as {
+            userId?: string;
+            meetings?: Array<{
+                id?: string;
+                tempId?: string;
+                title: string;
+                date: string;
+                content?: string;
+                agreements?: string;
+                participants?: string[];
+            }>;
+        };
         const { userId, meetings } = body;
 
         if (!userId || !meetings || !Array.isArray(meetings)) {
@@ -56,10 +67,11 @@ export async function POST(request: Request) {
             results
         });
 
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         console.error('Error sincronizando juntas:', error);
         return NextResponse.json(
-            { success: false, message: error.message },
+            { success: false, message },
             { status: 500 }
         );
     }

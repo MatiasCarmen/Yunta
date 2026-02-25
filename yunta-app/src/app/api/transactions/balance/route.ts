@@ -29,13 +29,14 @@ export async function GET(request: Request) {
             success: true,
             ...balance,
         });
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor.';
         console.error('Error al obtener balance:', error);
 
         return NextResponse.json(
             {
                 success: false,
-                message: error.message || 'Error interno del servidor.',
+                message,
             },
             { status: 500 }
         );

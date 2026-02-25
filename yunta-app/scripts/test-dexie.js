@@ -172,7 +172,7 @@ async function runFullTest() {
     await inspectDatabase();
     console.log('\n');
     
-    const id = await createTestMeeting();
+    await createTestMeeting();
     console.log('\n');
     
     await listAllMeetings();

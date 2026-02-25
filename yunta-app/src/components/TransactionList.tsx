@@ -8,7 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 interface TransactionListProps {
-    transactions: any[];
+    transactions: Array<{
+        id: string;
+        date: string | Date;
+        description: string;
+        category?: string;
+        type: 'IN' | 'OUT';
+        amount: number | string;
+    }>;
 }
 
 const formatCurrency = (amount: number) => {

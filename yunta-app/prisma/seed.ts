@@ -1,9 +1,15 @@
 import 'dotenv/config';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role, UserStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const userData = [
+const userData: Array<{
+    name: string;
+    email: string;
+    role: Role;
+    pinHash: string;
+    status: UserStatus;
+}> = [
     {
         name: 'Matías',
         email: 'matias@yunta.local',
@@ -49,16 +55,16 @@ async function main() {
             where: { email: user.email },
             update: {
                 name: user.name,
-                role: user.role as any, // Cast as any to bypass strict enum type check in seed script
+                role: user.role,
                 pinHash: user.pinHash,
-                status: user.status as any
+                status: user.status
             },
             create: {
                 name: user.name,
                 email: user.email,
-                role: user.role as any,
+                role: user.role,
                 pinHash: user.pinHash,
-                status: user.status as any
+                status: user.status
             },
         });
         console.log(`✅ Creado/Actualizado usuario: ${createdUser.name}`);

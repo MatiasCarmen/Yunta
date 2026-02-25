@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/database/client';
+import { $Enums } from '@prisma/client';
 
 // GET - Listar juntas
 export async function GET(request: Request) {
@@ -15,10 +16,14 @@ export async function GET(request: Request) {
         const userId = searchParams.get('userId');
         const status = searchParams.get('status');
 
+        const meetingStatus = status && (Object.values($Enums.MeetingStatus) as string[]).includes(status)
+            ? (status as $Enums.MeetingStatus)
+            : undefined;
+
         const meetings = await prisma.meeting.findMany({
             where: {
                 ...(userId && { createdById: userId }),
-                ...(status && { status: status as any }),
+                ...(meetingStatus && { status: meetingStatus }),
             },
             include: {
                 createdBy: {
@@ -53,10 +58,11 @@ export async function GET(request: Request) {
         });
 
         return NextResponse.json({ success: true, meetings });
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         console.error('Error obteniendo juntas:', error);
         return NextResponse.json(
-            { success: false, message: error.message },
+            { success: false, message },
             { status: 500 }
         );
     }
@@ -65,7 +71,14 @@ export async function GET(request: Request) {
 // POST - Crear junta individual
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
+        const body = await request.json() as {
+            title?: string;
+            date?: string;
+            content?: string;
+            agreements?: string;
+            participants?: string[];
+            userId?: string;
+        };
         const { title, date, content, agreements, participants, userId } = body;
 
         if (!title || !date || !userId) {
@@ -106,10 +119,13 @@ export async function POST(request: Request) {
             },
         });
 
-    } catch (error: any) {
+        return NextResponse.json({ success: true, meeting });
+
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         console.error('Error creando junta:', error);
         return NextResponse.json(
-            { success: false, message: error.message },
+            { success: false, message },
             { status: 500 }
         );
     }

@@ -55,11 +55,12 @@ export async function syncMeetings(userId: string) {
             message: `Sincronizadas ${ids.length} juntas`
         };
 
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         console.error('Error en syncMeetings:', error);
         return {
             success: false,
-            error: error.message
+            error: message
         };
     }
 }

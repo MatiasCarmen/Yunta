@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch, type Resolver, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -28,7 +28,8 @@ import {
   KardexReport,
   KardexDay,
   TransactionInput,
-  PaymentMethod
+  PaymentMethod,
+  PaymentDestination
 } from '@/app/actions/junta';
 
 import { 
@@ -120,7 +121,7 @@ Select.displayName = 'Select';
 const participantSchema = z.object({
   id: z.string(),
   name: z.string().min(2, 'Nombre requerido'),
-  dailyCommitment: z.number().min(1, 'Mínimo S/ 1'),
+  dailyCommitment: z.coerce.number().min(1, 'Mínimo S/ 1'),
 });
 
 const configSchema = z.object({
@@ -889,7 +890,7 @@ function ConfigWizard({ onComplete }: { onComplete: (state: JuntaState) => void 
   const [isCreating, setIsCreating] = useState(false);
 
   const form = useForm<ConfigFormValues>({
-    resolver: zodResolver(configSchema),
+    resolver: zodResolver(configSchema) as Resolver<ConfigFormValues>,
     defaultValues: {
       participants: [
         { id: generateUUID(), name: '', dailyCommitment: 0 },
@@ -903,7 +904,7 @@ function ConfigWizard({ onComplete }: { onComplete: (state: JuntaState) => void 
   const participants = useWatch({ control: form.control, name: 'participants' });
   const totalPot = participants.reduce((sum, p) => sum + (Number(p.dailyCommitment) || 0), 0);
 
-  const onStep1Submit = (data: ConfigFormValues) => {
+  const onStep1Submit: SubmitHandler<ConfigFormValues> = (data) => {
     setTempConfig(data);
     setStep(2);
   };
@@ -2254,7 +2255,7 @@ interface TransactionModalProps {
 function TransactionModal({ participant, targetDate, remainingDebt, onClose, onSave }: TransactionModalProps) {
   const [amount, setAmount] = useState(remainingDebt > 0 ? remainingDebt : participant.dailyCommitment);
   const [method, setMethod] = useState<'CASH' | 'YAPE' | 'DEBIT' | 'CREDIT_BCP'>('CASH');
-  const [destination, setDestination] = useState<'CAJA_CHICA' | 'STHEFANY_BCP' | 'PILAR' | 'SEBASTIAN'>('CAJA_CHICA');
+  const [destination, setDestination] = useState<PaymentDestination>('EFECTIVO');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -2320,10 +2321,12 @@ function TransactionModal({ participant, targetDate, remainingDebt, onClose, onS
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Destino</label>
               <Select value={destination} onChange={e => setDestination(e.target.value as typeof destination)} disabled={isSubmitting}>
-                <option value="CAJA_CHICA">Caja Chica</option>
-                <option value="STHEFANY_BCP">Sthefany (BCP)</option>
-                <option value="PILAR">Pilar</option>
-                <option value="SEBASTIAN">Sebastián</option>
+                <option value="EFECTIVO">Efectivo / Caja chica</option>
+                <option value="YAPE_PILAR">Yape Pilar</option>
+                <option value="YAPE_SEBASTIAN">Yape Sebastian</option>
+                <option value="YAPE_STHEFANY">Yape Sthefany</option>
+                <option value="TRANSFERENCIA_SEBASTIAN">Transferencia Sebastian</option>
+                <option value="TRANSFERENCIA_STHEFANY">Transferencia Sthefany</option>
               </Select>
             </div>
           </div>

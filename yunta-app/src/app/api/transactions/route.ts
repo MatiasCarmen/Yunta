@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { createTransaction, getTransactions } from '@/services/transactions';
 import type { CreateTransactionInput } from '@/types/transaction';
+import { ExpenseCategory } from '@prisma/client';
 
 // ============================================
 // POST: CREAR TRANSACCIÓN
@@ -20,11 +21,11 @@ export async function POST(request: Request) {
         // 1. PARSEAR Y VALIDAR REQUEST
         // ================================================
 
-        let body: CreateTransactionInput & { userId: string };
+        let body: CreateTransactionInput;
 
         try {
             body = await request.json();
-        } catch (error) {
+        } catch {
             return NextResponse.json(
                 {
                     success: false,
@@ -126,13 +127,14 @@ export async function POST(request: Request) {
             { status: 201 } // Created
         );
 
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor.';
         console.error('Error en API de transacciones:', error);
 
         return NextResponse.json(
             {
                 success: false,
-                message: error.message || 'Error interno del servidor.',
+                message,
             },
             { status: 500 }
         );
@@ -151,6 +153,9 @@ export async function GET(request: Request) {
         const type = searchParams.get('type') as 'IN' | 'OUT' | null;
         const category = searchParams.get('category');
         const limit = searchParams.get('limit');
+        const parsedCategory = category && (Object.values(ExpenseCategory) as string[]).includes(category)
+            ? (category as ExpenseCategory)
+            : undefined;
 
         // Validar userId
         if (!userId) {
@@ -164,14 +169,14 @@ export async function GET(request: Request) {
         }
 
         // Construir filtros
-        const filters: any = {};
+        const filters: { type?: 'IN' | 'OUT'; category?: ExpenseCategory; limit?: number } = {};
 
         if (type) {
             filters.type = type;
         }
 
-        if (category) {
-            filters.category = category;
+        if (parsedCategory) {
+            filters.category = parsedCategory;
         }
 
         if (limit) {
@@ -187,13 +192,14 @@ export async function GET(request: Request) {
             count: transactions.length,
         });
 
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error interno del servidor.';
         console.error('Error al obtener transacciones:', error);
 
         return NextResponse.json(
             {
                 success: false,
-                message: error.message || 'Error interno del servidor.',
+                message,
             },
             { status: 500 }
         );

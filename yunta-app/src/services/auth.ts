@@ -107,7 +107,8 @@ export async function loginWithPin(
         });
 
         // Devolver usuario sin datos sensibles
-        const { pinHash, ...safeUser } = user;
+        const { pinHash: _pinHash, ...safeUser } = user;
+        void _pinHash;
 
         return {
             success: true,

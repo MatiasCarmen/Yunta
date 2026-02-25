@@ -6,22 +6,19 @@
 // Listado de juntas con estado de sincronización
 // ============================================
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { localDb } from '@/database/local';
 import { syncMeetings } from '@/services/sync';
 
 export default function MeetingsPage() {
-    const [userName, setUserName] = useState('');
+    const [userName] = useState(() => {
+        if (typeof window === 'undefined') return '';
+        return localStorage.getItem('yunta_userName') || '';
+    });
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncResult, setSyncResult] = useState<{ success?: boolean, message?: string } | null>(null);
-
-    // Obtener usuario de sesión
-    useEffect(() => {
-        const name = localStorage.getItem('yunta_userName');
-        if (name) setUserName(name);
-    }, []);
 
     // Query reactiva a Dexie - se actualiza sola al cambiar la BD
     const meetings = useLiveQuery(() => localDb.meetings.toArray());

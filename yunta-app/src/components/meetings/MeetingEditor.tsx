@@ -10,7 +10,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { localDb } from '@/database/local'; // Instancia de Dexie
-import { v4 as uuidv4 } from 'uuid';
 
 export default function MeetingEditor() {
     const router = useRouter();

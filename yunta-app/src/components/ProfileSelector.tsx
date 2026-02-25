@@ -26,22 +26,6 @@ interface ProfileSelectorProps {
 }
 
 // ============================================
-// CONSTANTES
-// ============================================
-
-const ROLE_COLORS = {
-    EJECUTIVO: 'from-purple-500 to-indigo-600',
-    GESTOR: 'from-blue-500 to-cyan-600',
-    BENEFICIARIO: 'from-green-500 to-emerald-600',
-};
-
-const ROLE_LABELS = {
-    EJECUTIVO: 'Ejecutivo',
-    GESTOR: 'Gestor',
-    BENEFICIARIO: 'Beneficiario',
-};
-
-// ============================================
 // COMPONENTE PRINCIPAL
 // ============================================
 

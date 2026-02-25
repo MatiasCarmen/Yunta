@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { Suspense, useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,7 @@ const CATEGORIAS_GASTO = [
   { value: "OTHER", label: "Otros" },
 ];
 
-export default function CajaPage() {
+function CajaPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const juntaId = searchParams.get("id");
@@ -821,5 +821,22 @@ export default function CajaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CajaPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 max-w-7xl mx-auto">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-gray-600 mt-4">Cargando datos...</p>
+          </div>
+        </div>
+      }
+    >
+      <CajaPageInner />
+    </Suspense>
   );
 }

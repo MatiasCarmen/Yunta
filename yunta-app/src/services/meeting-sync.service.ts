@@ -78,11 +78,12 @@ export async function syncPendingMeetings(userId: string): Promise<SyncResult> {
                 } else {
                     throw new Error(data.message || 'Error desconocido');
                 }
-            } catch (error: any) {
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Error desconocido';
                 console.error(`❌ Error sincronizando junta ${meeting.id}:`, error);
                 errors.push({
                     localId: meeting.id,
-                    error: error.message,
+                    error: message,
                 });
             }
         }
@@ -92,12 +93,13 @@ export async function syncPendingMeetings(userId: string): Promise<SyncResult> {
             syncedCount,
             errors,
         };
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Error desconocido';
         console.error('❌ Error general en sincronización:', error);
         return {
             success: false,
             syncedCount: 0,
-            errors: [{ error: error.message }],
+            errors: [{ error: message }],
         };
     }
 }

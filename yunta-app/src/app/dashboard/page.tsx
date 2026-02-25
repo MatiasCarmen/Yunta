@@ -40,6 +40,13 @@ interface Transaction {
     };
 }
 
+type SummaryData = {
+    totalIncome: number;
+    totalExpenses: number;
+    balance: number;
+    junta: number;
+};
+
 // --- UTILIDADES DE COLOR Y ICONOS ---
 const getCategoryColor = (index: number) => {
     const colors = ['bg-blue-500', 'bg-indigo-500', 'bg-pink-500', 'bg-orange-500', 'bg-teal-500', 'bg-gray-500'];
@@ -56,7 +63,7 @@ const getCategoryIcon = (cat?: string) => {
 };
 
 // --- COMPONENTE: ASESOR IA GEMINI ---
-function AIAdvisor({ summary, transactions }: { summary: any, transactions: Transaction[] }) {
+function AIAdvisor({ summary, transactions }: { summary: SummaryData, transactions: Transaction[] }) {
     const [advice, setAdvice] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -156,7 +163,7 @@ function AIAdvisor({ summary, transactions }: { summary: any, transactions: Tran
 
 // --- SUB-COMPONENTES CONECTADOS ---
 
-function SummaryCards({ data }: { data: any }) {
+function SummaryCards({ data }: { data: SummaryData }) {
     // Calculamos la Junta (Asumiendo que usamos la regla 300 semanal)
     // En el futuro esto vendrá de la DB real de 'Meetings' o 'Goals'
     const juntaGoal = 300;
@@ -369,24 +376,31 @@ export default function Dashboard() {
                 const res = await fetch(`/api/transactions?userId=${userId}&limit=50`);
                 const data = await res.json();
 
-                if (data && (data.data || Array.isArray(data))) {
-                    const list = Array.isArray(data) ? data : data.data;
+                const list: Transaction[] = Array.isArray(data)
+                    ? data
+                    : Array.isArray(data?.transactions)
+                        ? data.transactions
+                        : Array.isArray(data?.data)
+                            ? data.data
+                            : [];
+
+                if (list.length > 0) {
                     setTransactions(list);
 
                     // Calcular Totales
-                    const inc = list.filter((t: any) => t.type === 'IN').reduce((a: number, b: any) => a + Number(b.amount), 0);
-                    const exp = list.filter((t: any) => t.type === 'OUT').reduce((a: number, b: any) => a + Number(b.amount), 0);
+                    const inc = list.filter((t) => t.type === 'IN').reduce((a, b) => a + Number(b.amount), 0);
+                    const exp = list.filter((t) => t.type === 'OUT').reduce((a, b) => a + Number(b.amount), 0);
 
                     // Calcular Junta (Suma de categoría RESERVATION_FUNDS)
                     const junta = list
-                        .filter((t: any) => t.type === 'OUT' && t.category === 'RESERVATION_FUNDS')
-                        .reduce((a: number, b: any) => a + Number(b.amount), 0);
+                        .filter((t) => t.type === 'OUT' && t.category === 'RESERVATION_FUNDS')
+                        .reduce((a, b) => a + Number(b.amount), 0);
 
                     setSummary({
                         totalIncome: inc,
                         totalExpenses: exp,
                         balance: inc - exp,
-                        junta: junta
+                        junta
                     });
                 }
             } catch (e) {

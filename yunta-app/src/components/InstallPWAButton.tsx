@@ -2,18 +2,23 @@
 
 import { useEffect, useState } from 'react';
 
+type BeforeInstallPromptEvent = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+};
+
 export default function InstallPWAButton() {
     const [supportsPWA, setSupportsPWA] = useState(false);
-    const [promptInstall, setPromptInstall] = useState<any>(null);
+    const [promptInstall, setPromptInstall] = useState<BeforeInstallPromptEvent | null>(null);
 
     useEffect(() => {
-        const handler = (e: any) => {
+        const handler = (e: BeforeInstallPromptEvent) => {
             e.preventDefault();
             setSupportsPWA(true);
             setPromptInstall(e);
         };
-        window.addEventListener('beforeinstallprompt', handler);
-        return () => window.removeEventListener('beforeinstallprompt', handler);
+        window.addEventListener('beforeinstallprompt', handler as EventListener);
+        return () => window.removeEventListener('beforeinstallprompt', handler as EventListener);
     }, []);
 
     const onClick = (evt: React.MouseEvent) => {
