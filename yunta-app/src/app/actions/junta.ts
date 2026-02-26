@@ -2,7 +2,7 @@
 
 import { prisma } from '@/database/client';
 import { revalidatePath } from 'next/cache';
-import { Prisma, $Enums } from '@prisma/client';
+import { Prisma, $Enums, CuentaDestino } from '@prisma/client';
 import { addDays, differenceInCalendarDays, startOfDay, startOfToday } from 'date-fns';
 
 // --- TYPES TO MATCH FRONTEND ---
@@ -16,7 +16,7 @@ export type TransactionInput = {
     participantId: string;
     amount: number;
     method: PaymentMethod;
-    destination: PaymentDestination;
+    destination?: CuentaDestino | null;
     notes?: string;
     clientTxId?: string;
 };
@@ -217,7 +217,7 @@ export async function getActiveJunta() {
                     participantId: p.shareId, // shareId is the participant ID here
                     amount: Number(p.amount),
                     method: p.method,
-                    destination: p.destination || 'EFECTIVO',
+                    destination: p.destination || CuentaDestino.EFECTIVO,
                     notes: p.notes || '',
                     isCorrection: false
                 });

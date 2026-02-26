@@ -2,6 +2,7 @@
 import { useJuntaSync } from '@/hooks/useJuntaSync';
 
 import { enqueuePendingPayment, getPendingPayments, deletePending } from '@/database/local';
+import { CuentaDestino } from '@prisma/client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useForm, useFieldArray, Controller, useWatch, type Resolver, type SubmitHandler } from 'react-hook-form';
@@ -20,12 +21,12 @@ import {
 import { LineChart, Line, ResponsiveContainer, CartesianGrid, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts';
 
 // --- SERVER ACTIONS ---
-import { 
-  createJunta, 
-  getActiveJunta, 
-  recordPayment, 
-  closeDay, 
-  rescheduleTurn, 
+import {
+  createJunta,
+  getActiveJunta,
+  recordPayment,
+  closeDay,
+  rescheduleTurn,
   getParticipantKardex,
   JuntaState,
   KardexReport,
@@ -35,7 +36,7 @@ import {
   PaymentDestination
 } from '@/app/actions/junta';
 
-import { 
+import {
   archiveJunta,
   getArchivedJuntas,
   getJuntaArchiveReport,
@@ -164,11 +165,11 @@ export default function JuntaPage() {
     type: 'success' | 'error' | 'info';
   } | null>(null);
   const [inputValue, setInputValue] = useState('');
-  const [loadingState, setLoadingState] = useState<{ isLoading: boolean; message: string }>({ 
-    isLoading: false, 
-    message: 'Procesando...' 
+  const [loadingState, setLoadingState] = useState<{ isLoading: boolean; message: string }>({
+    isLoading: false,
+    message: 'Procesando...'
   });
-  
+
   // Modal de cerrar día
   const [closeDayModal, setCloseDayModal] = useState<{
     isOpen: boolean;
@@ -180,7 +181,7 @@ export default function JuntaPage() {
       transactionCount: number;
     };
   } | null>(null);
-  
+
   // Panel de problemas detectados
   const [isProblemsModalOpen, setIsProblemsModalOpen] = useState(false);
   const [detectedProblems, setDetectedProblems] = useState<{
@@ -224,16 +225,16 @@ export default function JuntaPage() {
         const reason = inputValue || undefined;
         setConfirmDialog(null);
         setInputValue('');
-        
+
         setLoadingState({ isLoading: true, message: 'Archivando junta y generando reporte...' });
-        
+
         try {
           const [result] = await Promise.all([
             archiveJunta(junta.id, reason),
             new Promise(resolve => setTimeout(resolve, 1500)) // Delay mínimo para ver la animación
           ]);
           setLoadingState({ isLoading: false, message: '' });
-          
+
           if (result.success) {
             setAlertDialog({
               isOpen: true,
@@ -273,12 +274,12 @@ export default function JuntaPage() {
   const handleViewArchived = async () => {
     setLoadingState({ isLoading: true, message: 'Cargando juntas archivadas...' });
     setView('ARCHIVED');
-    
+
     const [archived] = await Promise.all([
       getArchivedJuntas(),
       new Promise(resolve => setTimeout(resolve, 1200)) // Delay mínimo
     ]);
-    
+
     setArchivedJuntas(archived);
     setLoadingState({ isLoading: false, message: '' });
   };
@@ -289,14 +290,14 @@ export default function JuntaPage() {
     try {
       setCloseDayModal(null);
       setLoadingState({ isLoading: true, message: 'Cerrando día...' });
-      
+
       await closeDay(junta.id, closeDayModal.date);
       const updated = await getActiveJunta();
-      
+
       setLoadingState({ isLoading: false, message: '' });
-      
+
       if (updated) setJunta(updated);
-      
+
       setAlertDialog({
         isOpen: true,
         title: '✅ Día Cerrado',
@@ -348,9 +349,9 @@ export default function JuntaPage() {
   // Detectar problemas cuando se abre el modal
   const handleOpenProblemsModal = () => {
     if (!junta) return;
-    
+
     setIsProblemsModalOpen(true);
-    
+
     // Calcular problemas en tiempo real
     if (!junta.schedule || junta.schedule.length === 0 || !junta.participants || junta.participants.length === 0) {
       setDetectedProblems({
@@ -362,7 +363,7 @@ export default function JuntaPage() {
     }
 
     const today = startOfToday();
-    
+
     try {
       const participantsWithDebt = junta.participants
         .map(p => {
@@ -372,17 +373,17 @@ export default function JuntaPage() {
               if (!day.expectedAmounts || typeof day.expectedAmounts !== 'object') return sum;
               return sum + (day.expectedAmounts[p.id] || 0);
             }, 0);
-          
+
           const totalPaid = junta.schedule
             .filter(day => day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today)))
             .reduce((sum: number, day: DaySchedule) => {
               if (!day.collectedAmounts || typeof day.collectedAmounts !== 'object') return sum;
               return sum + (day.collectedAmounts[p.id] || 0);
             }, 0);
-          
+
           const debt = totalExpected - totalPaid;
           const daysInDebt = p.dailyCommitment > 0 ? Math.floor(debt / p.dailyCommitment) : 0;
-          
+
           return { id: p.id, name: p.name, debt, daysInDebt };
         })
         .filter(p => p.daysInDebt >= 3);
@@ -395,13 +396,13 @@ export default function JuntaPage() {
             const collected = day.collectedAmounts[p.id] || 0;
             return collected >= expected;
           }).length;
-          
-          const totalActiveDays = junta.schedule.filter(day => 
+
+          const totalActiveDays = junta.schedule.filter(day =>
             day && day.date && (isBefore(parseISO(day.date), today) || isSameDay(parseISO(day.date), today))
           ).length;
-          
+
           const complianceRate = totalActiveDays > 0 ? (completedDays / totalActiveDays) * 100 : 100;
-          
+
           return { id: p.id, name: p.name, complianceRate };
         })
         .filter(p => p.complianceRate < 70);
@@ -430,457 +431,456 @@ export default function JuntaPage() {
   return (
     <>
       <LoadingScreen isLoading={loadingState.isLoading} message={loadingState.message} />
-      
+
       <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-2 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-40">
-          <div className="flex items-center gap-3">
-            <a 
-              href="/dashboard" 
-              className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
-              title="Volver al dashboard"
-            >
-              <ArrowLeft className="h-5 w-5 text-slate-600" />
-            </a>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                <Wallet className="h-6 w-6 text-indigo-600" />
-                Gestión de Junta
-                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">ADMIN</span>
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {view === 'DASHBOARD' && (
-              <>
-                {/* Botón de Caja */}
-                <Button 
-                  variant="default" 
-                  size="sm"
-                  onClick={() => {
-                    if (junta) {
-                      window.location.href = `/dashboard/junta/caja?id=${junta.id}`;
-                    }
-                  }}
-                  className="bg-green-600 hover:bg-green-700 text-white"
-                >
-                  <Wallet className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">💰 Caja</span>
-                </Button>
-                
-                {/* Botón de Alertas/Problemas */}
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleOpenProblemsModal}
-                  className="border-amber-500 text-amber-700 hover:bg-amber-50"
-                >
-                  <AlertTriangle className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Ver Alertas</span>
-                </Button>
-                
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  className="bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={handleArchiveJunta}
-                >
-                  <Archive className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Archivar</span>
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleViewArchived}
-                >
-                  <FolderArchive className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Historial</span>
-                </Button>
-                
-                <Button variant="outline" size="sm" onClick={() => {
-                  setConfirmDialog({
-                    isOpen: true,
-                    title: '🔄 Reiniciar Sistema',
-                    message: '¿Estás seguro de que deseas reiniciar? Se perderá la junta actual sin archivar.',
-                    onConfirm: () => {
-                      setConfirmDialog(null);
-                      setJunta(null);
-                      setView('CONFIG');
-                    }
-                  });
-                }}>
-                  <Trash2 className="h-4 w-4 md:mr-2" />
-                  <span className="hidden md:inline">Reiniciar</span>
-                </Button>
-              </>
-            )}
-            {view === 'ARCHIVED' && (
-              <Button variant="outline" size="sm" onClick={() => setView('DASHBOARD')}>
-                <ArrowLeft className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">Volver</span>
-              </Button>
-            )}
-          </div>
-        </header>
-
-        {view === 'LOADING' && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-          </div>
-        )}
-
-        {view === 'CONFIG' && <ConfigWizard onComplete={handleJuntaCreated} />}
-
-        {view === 'ARCHIVED' && <ArchivedJuntasView juntas={archivedJuntas} />}
-
-        {view === 'DASHBOARD' && junta && <Dashboard junta={junta} onUpdate={setJunta} onViewDetail={handleOpenKardex} />}
-
-        {isKardexOpen && (
-          <KardexModal 
-            report={kardexReport} 
-            loading={isLoadingKardex}
-            error={kardexError}
-            onClose={handleCloseKardex} 
-          />
-        )}
-
-        {/* Diálogo de Confirmación Personalizado */}
-        {confirmDialog && confirmDialog.isOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
-              <h3 className="text-xl font-bold text-slate-900">{confirmDialog.title}</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">{confirmDialog.message}</p>
-              
-              {confirmDialog.showInput && (
-                <Input 
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder={confirmDialog.inputPlaceholder}
-                  className="mt-3"
-                />
-              )}
-              
-              <div className="flex gap-3 pt-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => {
-                    setConfirmDialog(null);
-                    setInputValue('');
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button 
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={confirmDialog.onConfirm}
-                >
-                  Confirmar
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Diálogo de Alerta Personalizado */}
-        {alertDialog && alertDialog.isOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
-              <div className="flex items-start gap-3">
-                <div className={`p-2 rounded-full ${
-                  alertDialog.type === 'success' ? 'bg-green-100' :
-                  alertDialog.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
-                }`}>
-                  {alertDialog.type === 'success' && <CheckCircle2 className="w-6 h-6 text-green-600" />}
-                  {alertDialog.type === 'error' && <AlertTriangle className="w-6 h-6 text-red-600" />}
-                  {alertDialog.type === 'info' && <AlertTriangle className="w-6 h-6 text-blue-600" />}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-slate-900">{alertDialog.title}</h3>
-                  <p className="text-slate-600 text-sm mt-1">{alertDialog.message}</p>
-                </div>
-              </div>
-              <Button 
-                className="w-full"
-                onClick={() => setAlertDialog(null)}
+        <div className="max-w-7xl mx-auto space-y-6">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-40">
+            <div className="flex items-center gap-3">
+              <a
+                href="/dashboard"
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Volver al dashboard"
               >
-                Entendido
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Modal de Panel de Problemas/Alertas */}
-        {isProblemsModalOpen && junta && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setIsProblemsModalOpen(false)}>
-            <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              {/* Header */}
-              <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-6 flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <AlertTriangle className="h-6 w-6" />
-                    Panel de Alertas
-                  </h2>
-                  <p className="text-amber-100 text-sm mt-1">
-                    Problemas detectados en la junta actual
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setIsProblemsModalOpen(false)} 
-                  className="text-white hover:bg-white/20 p-2 rounded-lg transition"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Contenido */}
-              <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)] space-y-6">
-                {/* Estado Global */}
-                <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
-                  <div>
-                    <p className="text-sm text-slate-500">Total de Problemas Detectados</p>
-                    <p className="text-3xl font-bold text-slate-900 mt-1">
-                      {detectedProblems.participantsWithDebt.length + 
-                       detectedProblems.lowComplianceParticipants.length + 
-                       (detectedProblems.overdueUnlockedDays > 0 ? 1 : 0)}
-                    </p>
-                  </div>
-                  {(detectedProblems.participantsWithDebt.length + 
-                    detectedProblems.lowComplianceParticipants.length + 
-                    detectedProblems.overdueUnlockedDays) === 0 && (
-                    <div className="flex items-center gap-2 text-emerald-600">
-                      <CheckCircle2 className="h-8 w-8" />
-                      <span className="font-semibold">Todo en orden</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Participantes con Deuda Alta */}
-                {detectedProblems.participantsWithDebt.length > 0 && (
-                  <Card className="border-l-4 border-l-red-500">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2 text-red-700">
-                        <AlertTriangle className="h-5 w-5" />
-                        Participantes con Deuda Alta (≥3 días)
-                      </CardTitle>
-                      <CardDescription>
-                        Estos participantes tienen deudas significativas que requieren atención
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {detectedProblems.participantsWithDebt.map(p => (
-                          <div key={p.id} className="flex items-center justify-between bg-red-50 p-4 rounded-lg">
-                            <div>
-                              <p className="font-semibold text-slate-900">{p.name}</p>
-                              <p className="text-sm text-slate-600">
-                                Deuda: <span className="font-mono font-bold text-red-600">S/ {p.debt.toFixed(2)}</span> ({p.daysInDebt} días)
-                              </p>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                setIsProblemsModalOpen(false);
-                                handleOpenKardex(p.id);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver Historial
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Participantes con Bajo Cumplimiento */}
-                {detectedProblems.lowComplianceParticipants.length > 0 && (
-                  <Card className="border-l-4 border-l-amber-500">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
-                        <AlertTriangle className="h-5 w-5" />
-                        Bajo Cumplimiento (&lt;70%)
-                      </CardTitle>
-                      <CardDescription>
-                        Participantes con porcentaje de cumplimiento por debajo del estándar
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {detectedProblems.lowComplianceParticipants.map(p => (
-                          <div key={p.id} className="flex items-center justify-between bg-amber-50 p-4 rounded-lg">
-                            <div>
-                              <p className="font-semibold text-slate-900">{p.name}</p>
-                              <p className="text-sm text-slate-600">
-                                Cumplimiento: <span className="font-mono font-bold text-amber-600">{p.complianceRate.toFixed(1)}%</span>
-                              </p>
-                            </div>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => {
-                                setIsProblemsModalOpen(false);
-                                handleOpenKardex(p.id);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver Historial
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Días sin Cerrar */}
-                {detectedProblems.overdueUnlockedDays > 0 && (
-                  <Card className="border-l-4 border-l-blue-500">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
-                        <Clock className="h-5 w-5" />
-                        Días Pasados Sin Cerrar
-                      </CardTitle>
-                      <CardDescription>
-                        Hay días vencidos que aún no han sido cerrados
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <p className="text-slate-700">
-                          <span className="font-bold text-2xl text-blue-600">{detectedProblems.overdueUnlockedDays}</span> día{detectedProblems.overdueUnlockedDays > 1 ? 's' : ''} sin cerrar
-                        </p>
-                        <p className="text-sm text-slate-600 mt-2">
-                          Revisa la tabla de cronograma y cierra los días completados para mantener el registro actualizado.
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Mensaje cuando no hay problemas */}
-                {detectedProblems.participantsWithDebt.length === 0 && 
-                 detectedProblems.lowComplianceParticipants.length === 0 && 
-                 detectedProblems.overdueUnlockedDays === 0 && (
-                  <div className="text-center py-12">
-                    <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">¡Todo en Orden!</h3>
-                    <p className="text-slate-600">
-                      No se detectaron problemas en la junta actual. Todos los participantes están al día.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="bg-slate-50 px-6 py-4 flex gap-3 justify-end border-t">
-                <Button 
-                  variant="default" 
-                  onClick={() => setIsProblemsModalOpen(false)}
-                >
-                  Cerrar
-                </Button>
+                <ArrowLeft className="h-5 w-5 text-slate-600" />
+              </a>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                  <Wallet className="h-6 w-6 text-indigo-600" />
+                  Gestión de Junta
+                  <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">ADMIN</span>
+                </h1>
               </div>
             </div>
-          </div>
-        )}
+            <div className="flex items-center gap-3">
+              {view === 'DASHBOARD' && (
+                <>
+                  {/* Botón de Caja */}
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      if (junta) {
+                        window.location.href = `/dashboard/junta/caja?id=${junta.id}`;
+                      }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <Wallet className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">💰 Caja</span>
+                  </Button>
 
-        {/* Modal de Cerrar Día */}
-        {closeDayModal && closeDayModal.isOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
-              {/* Header */}
-              <div className="flex items-start gap-3">
-                <div className="p-3 rounded-full bg-amber-100">
-                  <Lock className="w-6 h-6 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900">¿Cerrar Día?</h3>
-                  <p className="text-slate-600 text-sm mt-1">
-                    {format(parseISO(closeDayModal.date), "EEEE, dd 'de' MMMM", { locale: es })}
-                  </p>
-                </div>
-              </div>
+                  {/* Botón de Alertas/Problemas */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenProblemsModal}
+                    className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                  >
+                    <AlertTriangle className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Ver Alertas</span>
+                  </Button>
 
-              {/* Información del Día */}
-              {closeDayModal.dayInfo && (
-                <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                  <h4 className="font-semibold text-slate-900 text-sm">Resumen del Día</h4>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white p-3 rounded-lg">
-                      <p className="text-xs text-slate-500">Esperado</p>
-                      <p className="text-lg font-bold text-slate-900">
-                        S/ {closeDayModal.dayInfo.expectedAmount.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="bg-white p-3 rounded-lg">
-                      <p className="text-xs text-slate-500">Recaudado</p>
-                      <p className="text-lg font-bold text-emerald-600">
-                        S/ {closeDayModal.dayInfo.collectedAmount.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={handleArchiveJunta}
+                  >
+                    <Archive className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Archivar</span>
+                  </Button>
 
-                  <div className="flex gap-4 text-sm">
-                    <div>
-                      <span className="text-slate-500">Participantes:</span>
-                      <span className="font-semibold text-slate-900 ml-1">
-                        {closeDayModal.dayInfo.participantCount}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Transacciones:</span>
-                      <span className="font-semibold text-slate-900 ml-1">
-                        {closeDayModal.dayInfo.transactionCount}
-                      </span>
-                    </div>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleViewArchived}
+                  >
+                    <FolderArchive className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Historial</span>
+                  </Button>
 
-                  {closeDayModal.dayInfo.collectedAmount < closeDayModal.dayInfo.expectedAmount && (
-                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
-                      <p className="text-xs text-amber-800 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4" />
-                        Faltan S/ {(closeDayModal.dayInfo.expectedAmount - closeDayModal.dayInfo.collectedAmount).toFixed(2)} por recaudar
-                      </p>
-                    </div>
-                  )}
-                </div>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setConfirmDialog({
+                      isOpen: true,
+                      title: '🔄 Reiniciar Sistema',
+                      message: '¿Estás seguro de que deseas reiniciar? Se perderá la junta actual sin archivar.',
+                      onConfirm: () => {
+                        setConfirmDialog(null);
+                        setJunta(null);
+                        setView('CONFIG');
+                      }
+                    });
+                  }}>
+                    <Trash2 className="h-4 w-4 md:mr-2" />
+                    <span className="hidden md:inline">Reiniciar</span>
+                  </Button>
+                </>
               )}
-
-              {/* Advertencia */}
-              <div className="bg-rose-50 border border-rose-200 p-4 rounded-lg">
-                <p className="text-sm text-rose-800">
-                  <strong>⚠️ Advertencia:</strong> Al cerrar este día, no se podrán realizar más ediciones simples. 
-                  Solo un administrador podrá reabrirlo.
-                </p>
-              </div>
-
-              {/* Botones */}
-              <div className="flex gap-3 pt-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={() => setCloseDayModal(null)}
-                >
-                  Cancelar
+              {view === 'ARCHIVED' && (
+                <Button variant="outline" size="sm" onClick={() => setView('DASHBOARD')}>
+                  <ArrowLeft className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Volver</span>
                 </Button>
-                <Button 
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
-                  onClick={confirmCloseDay}
+              )}
+            </div>
+          </header>
+
+          {view === 'LOADING' && (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+            </div>
+          )}
+
+          {view === 'CONFIG' && <ConfigWizard onComplete={handleJuntaCreated} />}
+
+          {view === 'ARCHIVED' && <ArchivedJuntasView juntas={archivedJuntas} />}
+
+          {view === 'DASHBOARD' && junta && <Dashboard junta={junta} onUpdate={setJunta} onViewDetail={handleOpenKardex} />}
+
+          {isKardexOpen && (
+            <KardexModal
+              report={kardexReport}
+              loading={isLoadingKardex}
+              error={kardexError}
+              onClose={handleCloseKardex}
+            />
+          )}
+
+          {/* Diálogo de Confirmación Personalizado */}
+          {confirmDialog && confirmDialog.isOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+                <h3 className="text-xl font-bold text-slate-900">{confirmDialog.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">{confirmDialog.message}</p>
+
+                {confirmDialog.showInput && (
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={confirmDialog.inputPlaceholder}
+                    className="mt-3"
+                  />
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setConfirmDialog(null);
+                      setInputValue('');
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={confirmDialog.onConfirm}
+                  >
+                    Confirmar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Diálogo de Alerta Personalizado */}
+          {alertDialog && alertDialog.isOpen && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-full ${alertDialog.type === 'success' ? 'bg-green-100' :
+                    alertDialog.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
+                    }`}>
+                    {alertDialog.type === 'success' && <CheckCircle2 className="w-6 h-6 text-green-600" />}
+                    {alertDialog.type === 'error' && <AlertTriangle className="w-6 h-6 text-red-600" />}
+                    {alertDialog.type === 'info' && <AlertTriangle className="w-6 h-6 text-blue-600" />}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-slate-900">{alertDialog.title}</h3>
+                    <p className="text-slate-600 text-sm mt-1">{alertDialog.message}</p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => setAlertDialog(null)}
                 >
-                  <Lock className="w-4 h-4 mr-2" />
-                  Cerrar Día
+                  Entendido
                 </Button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Modal de Panel de Problemas/Alertas */}
+          {isProblemsModalOpen && junta && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setIsProblemsModalOpen(false)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="bg-gradient-to-r from-amber-600 to-orange-600 text-white p-6 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <AlertTriangle className="h-6 w-6" />
+                      Panel de Alertas
+                    </h2>
+                    <p className="text-amber-100 text-sm mt-1">
+                      Problemas detectados en la junta actual
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsProblemsModalOpen(false)}
+                    className="text-white hover:bg-white/20 p-2 rounded-lg transition"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* Contenido */}
+                <div className="p-6 overflow-y-auto max-h-[calc(85vh-180px)] space-y-6">
+                  {/* Estado Global */}
+                  <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl">
+                    <div>
+                      <p className="text-sm text-slate-500">Total de Problemas Detectados</p>
+                      <p className="text-3xl font-bold text-slate-900 mt-1">
+                        {detectedProblems.participantsWithDebt.length +
+                          detectedProblems.lowComplianceParticipants.length +
+                          (detectedProblems.overdueUnlockedDays > 0 ? 1 : 0)}
+                      </p>
+                    </div>
+                    {(detectedProblems.participantsWithDebt.length +
+                      detectedProblems.lowComplianceParticipants.length +
+                      detectedProblems.overdueUnlockedDays) === 0 && (
+                        <div className="flex items-center gap-2 text-emerald-600">
+                          <CheckCircle2 className="h-8 w-8" />
+                          <span className="font-semibold">Todo en orden</span>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Participantes con Deuda Alta */}
+                  {detectedProblems.participantsWithDebt.length > 0 && (
+                    <Card className="border-l-4 border-l-red-500">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2 text-red-700">
+                          <AlertTriangle className="h-5 w-5" />
+                          Participantes con Deuda Alta (≥3 días)
+                        </CardTitle>
+                        <CardDescription>
+                          Estos participantes tienen deudas significativas que requieren atención
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {detectedProblems.participantsWithDebt.map(p => (
+                            <div key={p.id} className="flex items-center justify-between bg-red-50 p-4 rounded-lg">
+                              <div>
+                                <p className="font-semibold text-slate-900">{p.name}</p>
+                                <p className="text-sm text-slate-600">
+                                  Deuda: <span className="font-mono font-bold text-red-600">S/ {p.debt.toFixed(2)}</span> ({p.daysInDebt} días)
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setIsProblemsModalOpen(false);
+                                  handleOpenKardex(p.id);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver Historial
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Participantes con Bajo Cumplimiento */}
+                  {detectedProblems.lowComplianceParticipants.length > 0 && (
+                    <Card className="border-l-4 border-l-amber-500">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2 text-amber-700">
+                          <AlertTriangle className="h-5 w-5" />
+                          Bajo Cumplimiento (&lt;70%)
+                        </CardTitle>
+                        <CardDescription>
+                          Participantes con porcentaje de cumplimiento por debajo del estándar
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {detectedProblems.lowComplianceParticipants.map(p => (
+                            <div key={p.id} className="flex items-center justify-between bg-amber-50 p-4 rounded-lg">
+                              <div>
+                                <p className="font-semibold text-slate-900">{p.name}</p>
+                                <p className="text-sm text-slate-600">
+                                  Cumplimiento: <span className="font-mono font-bold text-amber-600">{p.complianceRate.toFixed(1)}%</span>
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setIsProblemsModalOpen(false);
+                                  handleOpenKardex(p.id);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Ver Historial
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Días sin Cerrar */}
+                  {detectedProblems.overdueUnlockedDays > 0 && (
+                    <Card className="border-l-4 border-l-blue-500">
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2 text-blue-700">
+                          <Clock className="h-5 w-5" />
+                          Días Pasados Sin Cerrar
+                        </CardTitle>
+                        <CardDescription>
+                          Hay días vencidos que aún no han sido cerrados
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <p className="text-slate-700">
+                            <span className="font-bold text-2xl text-blue-600">{detectedProblems.overdueUnlockedDays}</span> día{detectedProblems.overdueUnlockedDays > 1 ? 's' : ''} sin cerrar
+                          </p>
+                          <p className="text-sm text-slate-600 mt-2">
+                            Revisa la tabla de cronograma y cierra los días completados para mantener el registro actualizado.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Mensaje cuando no hay problemas */}
+                  {detectedProblems.participantsWithDebt.length === 0 &&
+                    detectedProblems.lowComplianceParticipants.length === 0 &&
+                    detectedProblems.overdueUnlockedDays === 0 && (
+                      <div className="text-center py-12">
+                        <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">¡Todo en Orden!</h3>
+                        <p className="text-slate-600">
+                          No se detectaron problemas en la junta actual. Todos los participantes están al día.
+                        </p>
+                      </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="bg-slate-50 px-6 py-4 flex gap-3 justify-end border-t">
+                  <Button
+                    variant="default"
+                    onClick={() => setIsProblemsModalOpen(false)}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Cerrar Día */}
+          {closeDayModal && closeDayModal.isOpen && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
+                {/* Header */}
+                <div className="flex items-start gap-3">
+                  <div className="p-3 rounded-full bg-amber-100">
+                    <Lock className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-slate-900">¿Cerrar Día?</h3>
+                    <p className="text-slate-600 text-sm mt-1">
+                      {format(parseISO(closeDayModal.date), "EEEE, dd 'de' MMMM", { locale: es })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Información del Día */}
+                {closeDayModal.dayInfo && (
+                  <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                    <h4 className="font-semibold text-slate-900 text-sm">Resumen del Día</h4>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white p-3 rounded-lg">
+                        <p className="text-xs text-slate-500">Esperado</p>
+                        <p className="text-lg font-bold text-slate-900">
+                          S/ {closeDayModal.dayInfo.expectedAmount.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-white p-3 rounded-lg">
+                        <p className="text-xs text-slate-500">Recaudado</p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          S/ {closeDayModal.dayInfo.collectedAmount.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-500">Participantes:</span>
+                        <span className="font-semibold text-slate-900 ml-1">
+                          {closeDayModal.dayInfo.participantCount}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Transacciones:</span>
+                        <span className="font-semibold text-slate-900 ml-1">
+                          {closeDayModal.dayInfo.transactionCount}
+                        </span>
+                      </div>
+                    </div>
+
+                    {closeDayModal.dayInfo.collectedAmount < closeDayModal.dayInfo.expectedAmount && (
+                      <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                        <p className="text-xs text-amber-800 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Faltan S/ {(closeDayModal.dayInfo.expectedAmount - closeDayModal.dayInfo.collectedAmount).toFixed(2)} por recaudar
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Advertencia */}
+                <div className="bg-rose-50 border border-rose-200 p-4 rounded-lg">
+                  <p className="text-sm text-rose-800">
+                    <strong>⚠️ Advertencia:</strong> Al cerrar este día, no se podrán realizar más ediciones simples.
+                    Solo un administrador podrá reabrirlo.
+                  </p>
+                </div>
+
+                {/* Botones */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setCloseDayModal(null)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={confirmCloseDay}
+                  >
+                    <Lock className="w-4 h-4 mr-2" />
+                    Cerrar Día
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </>
   );
 }
@@ -1155,16 +1155,16 @@ function ScheduleBuilder({
 // --- DASHBOARD ---
 
 function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpdate: (j: JuntaState) => void; onViewDetail: (id: string) => void }) {
-  
+
 
   const today = formatDateKey(new Date());
   const hasToday = junta.schedule.some(d => d.date === today);
   const initialDate = hasToday ? today : (junta.schedule.length > 0 ? junta.schedule[0].date : today);
-  
+
   const [expandedDate, setExpandedDate] = useState<string>(initialDate);
   const [showPayModal, setShowPayModal] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  
+
   // Modal de cerrar día
   const [closeDayModal, setCloseDayModal] = useState<{
     isOpen: boolean;
@@ -1176,13 +1176,13 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
       transactionCount: number;
     };
   } | null>(null);
-  
+
   // Modal de reabrir día
   const [reopenDayModal, setReopenDayModal] = useState<{
     isOpen: boolean;
     date: string;
   } | null>(null);
-  
+
   // Estado para alertas
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean;
@@ -1190,45 +1190,45 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
     message: string;
     type: 'success' | 'error' | 'info';
   } | null>(null);
-  
-  const [loadingState, setLoadingState] = useState<{ isLoading: boolean; message: string }>({ 
-    isLoading: false, 
-    message: 'Procesando...' 
+
+  const [loadingState, setLoadingState] = useState<{ isLoading: boolean; message: string }>({
+    isLoading: false,
+    message: 'Procesando...'
   });
 
-    const [offlineStats, setOfflineStats] = useState({ pending: 0, failed: 0 });
+  const [offlineStats, setOfflineStats] = useState({ pending: 0, failed: 0 });
 
   const loadOfflineStats = async () => {
-     const pendings = await getPendingPayments();
-     setOfflineStats({
-        pending: pendings.filter(p => p.status === 'PENDING').length,
-        failed: pendings.filter(p => p.status === 'FAILED').length
-     });
+    const pendings = await getPendingPayments();
+    setOfflineStats({
+      pending: pendings.filter(p => p.status === 'PENDING').length,
+      failed: pendings.filter(p => p.status === 'FAILED').length
+    });
   };
 
   useEffect(() => {
-     loadOfflineStats();
+    loadOfflineStats();
   }, []);
 
   const handleRetrySync = async () => {
     setLoadingState({ isLoading: true, message: 'Reintentando sync...' });
     if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('online'));
+      window.dispatchEvent(new Event('online'));
     }
     setTimeout(() => {
-        loadOfflineStats();
-        setLoadingState({ isLoading: false, message: '' });
+      loadOfflineStats();
+      setLoadingState({ isLoading: false, message: '' });
     }, 2000);
   };
 
   const handleDiscardFailed = async () => {
-     const pendings = await getPendingPayments();
-     for (const p of pendings) {
-         if (p.status === 'FAILED' && p.id) {
-             await deletePending(p.id);
-         }
-     }
-     loadOfflineStats();
+    const pendings = await getPendingPayments();
+    for (const p of pendings) {
+      if (p.status === 'FAILED' && p.id) {
+        await deletePending(p.id);
+      }
+    }
+    loadOfflineStats();
   };
 
   useJuntaSync(junta.id, async () => {
@@ -1242,25 +1242,25 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
     const txPayload = { ...txData, clientTxId };
 
     if (!navigator.onLine) {
-       await enqueuePendingPayment(txPayload);
-       setAlertDialog({
-         isOpen: true,
-         title: 'Encolado Offline',
-         message: 'No hay conexión. El pago se guardó y se sincronizará automáticamente cuando vuelva internet.',
-         type: 'info'
-       });
-       setTimeout(() => setAlertDialog(null), 3000);
-       setShowPayModal(null);
-       loadOfflineStats();
-       return;
+      await enqueuePendingPayment(txPayload);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Encolado Offline',
+        message: 'No hay conexión. El pago se guardó y se sincronizará automáticamente cuando vuelva internet.',
+        type: 'info'
+      });
+      setTimeout(() => setAlertDialog(null), 3000);
+      setShowPayModal(null);
+      loadOfflineStats();
+      return;
     }
 
     try {
       setLoadingState({ isLoading: true, message: 'Procesando pago...' });
       const res = await recordPayment(junta.id, txPayload);
-      
+
       if (!res.success) {
-         throw new Error(res.error || 'Error server-side');
+        throw new Error(res.error || 'Error server-side');
       }
 
       const updated = await getActiveJunta();
@@ -1268,13 +1268,13 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
       setShowPayModal(null);
     } catch (error) {
       console.error('Error recording payment:', error);
-      
+
       await enqueuePendingPayment(txPayload);
       setAlertDialog({
-         isOpen: true,
-         title: 'Error de Red - Guardado Local',
-         message: 'El pago falló por red. Se guardó localmente y se reintentará luego.',
-         type: 'info'
+        isOpen: true,
+        title: 'Error de Red - Guardado Local',
+        message: 'El pago falló por red. Se guardó localmente y se reintentará luego.',
+        type: 'info'
       });
       setTimeout(() => setAlertDialog(null), 3500);
       setShowPayModal(null);
@@ -1289,14 +1289,14 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
     const daySchedule = junta.schedule.find(d => d.date === date) as DaySchedule | undefined;
     if (!daySchedule) return;
 
-    const expectedAmount = daySchedule.expectedAmounts && typeof daySchedule.expectedAmounts === 'object' 
+    const expectedAmount = daySchedule.expectedAmounts && typeof daySchedule.expectedAmounts === 'object'
       ? Object.values(daySchedule.expectedAmounts).reduce((sum: number, val) => sum + (val || 0), 0)
       : 0;
-    
+
     const collectedAmount = daySchedule.collectedAmounts && typeof daySchedule.collectedAmounts === 'object'
       ? Object.values(daySchedule.collectedAmounts).reduce((sum: number, val) => sum + (val || 0), 0)
       : 0;
-    
+
     const participantCount = junta.participants?.length || 0;
     const transactionCount = daySchedule.transactions?.length || 0;
 
@@ -1319,14 +1319,14 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
     try {
       setCloseDayModal(null);
       setLoadingState({ isLoading: true, message: 'Cerrando día...' });
-      
+
       await closeDay(junta.id, closeDayModal.date);
       const updated = await getActiveJunta();
-      
+
       setLoadingState({ isLoading: false, message: '' });
-      
+
       if (updated) onUpdate(updated);
-      
+
       setAlertDialog({
         isOpen: true,
         title: '✅ Día Cerrado',
@@ -1360,14 +1360,14 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
     try {
       setReopenDayModal(null);
       setLoadingState({ isLoading: true, message: 'Reabriendo día...' });
-      
+
       await closeDay(junta.id, reopenDayModal.date); // toggle
       const updated = await getActiveJunta();
-      
+
       setLoadingState({ isLoading: false, message: '' });
-      
+
       if (updated) onUpdate(updated);
-      
+
       setAlertDialog({
         isOpen: true,
         title: '✅ Día Reabierto',
@@ -1405,19 +1405,19 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       {/* LEFT: SERPENTINA AGENDA */}
       <div className="lg:col-span-8 space-y-6">
-        
+
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-slate-800">Agenda de la Junta</h2>
-          
+
           <div className="flex gap-2 items-center">
-             {(offlineStats.pending > 0 || offlineStats.failed > 0) && (
-               <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
-                 {offlineStats.pending > 0 && <span className="text-amber-600">⏳ {offlineStats.pending} Pendientes</span>}
-                 {offlineStats.failed > 0 && <span className="text-red-500">❌ {offlineStats.failed} Fallidos</span>}
-                 <button onClick={handleRetrySync} className="text-indigo-600 hover:underline ml-2">Reintentar</button>
-                 {offlineStats.failed > 0 && <button onClick={handleDiscardFailed} className="text-slate-500 hover:underline ml-2 text-xs">Descartar</button>}
-               </div>
-             )}
+            {(offlineStats.pending > 0 || offlineStats.failed > 0) && (
+              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
+                {offlineStats.pending > 0 && <span className="text-amber-600">⏳ {offlineStats.pending} Pendientes</span>}
+                {offlineStats.failed > 0 && <span className="text-red-500">❌ {offlineStats.failed} Fallidos</span>}
+                <button onClick={handleRetrySync} className="text-indigo-600 hover:underline ml-2">Reintentar</button>
+                {offlineStats.failed > 0 && <button onClick={handleDiscardFailed} className="text-slate-500 hover:underline ml-2 text-xs">Descartar</button>}
+              </div>
+            )}
             <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)}>
               <History className="w-4 h-4 mr-2" /> Historial Global
             </Button>
@@ -1478,19 +1478,18 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
       )}
 
       {showHistory && <HistoryModal junta={junta} onClose={() => setShowHistory(false)} />}
-      
+
       {/* Loading Screen */}
       <LoadingScreen isLoading={loadingState.isLoading} message={loadingState.message} />
-      
+
       {/* Modal de Alerta */}
       {alertDialog && alertDialog.isOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in duration-200">
             <div className="flex items-start gap-3">
-              <div className={`p-2 rounded-full ${
-                alertDialog.type === 'success' ? 'bg-green-100' :
+              <div className={`p-2 rounded-full ${alertDialog.type === 'success' ? 'bg-green-100' :
                 alertDialog.type === 'error' ? 'bg-red-100' : 'bg-blue-100'
-              }`}>
+                }`}>
                 {alertDialog.type === 'success' && <CheckCircle2 className="w-6 h-6 text-green-600" />}
                 {alertDialog.type === 'error' && <AlertTriangle className="w-6 h-6 text-red-600" />}
                 {alertDialog.type === 'info' && <AlertTriangle className="w-6 h-6 text-blue-600" />}
@@ -1500,7 +1499,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
                 <p className="text-slate-600 text-sm mt-1">{alertDialog.message}</p>
               </div>
             </div>
-            <Button 
+            <Button
               className="w-full"
               onClick={() => setAlertDialog(null)}
             >
@@ -1509,7 +1508,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
           </div>
         </div>
       )}
-      
+
       {/* Modal de Cerrar Día */}
       {closeDayModal && closeDayModal.isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -1529,7 +1528,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
             {closeDayModal.dayInfo && (
               <div className="bg-slate-50 rounded-xl p-4 space-y-3">
                 <h4 className="font-semibold text-slate-900 text-sm">Resumen del Día</h4>
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white p-3 rounded-lg">
                     <p className="text-xs text-slate-500">Esperado</p>
@@ -1573,20 +1572,20 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
 
             <div className="bg-rose-50 border border-rose-200 p-4 rounded-lg">
               <p className="text-sm text-rose-800">
-                <strong>⚠️ Advertencia:</strong> Al cerrar este día, no se podrán realizar más ediciones simples. 
+                <strong>⚠️ Advertencia:</strong> Al cerrar este día, no se podrán realizar más ediciones simples.
                 Solo un administrador podrá reabrirlo.
               </p>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => setCloseDayModal(null)}
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
                 onClick={confirmCloseDay}
               >
@@ -1597,7 +1596,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
           </div>
         </div>
       )}
-      
+
       {/* Modal de Reabrir Día */}
       {reopenDayModal && reopenDayModal.isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -1627,14 +1626,14 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="flex-1"
                 onClick={() => setReopenDayModal(null)}
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={confirmReopenDay}
               >
@@ -1877,10 +1876,10 @@ function ParticipantsSummaryCard({ junta, onViewDetail }: { junta: JuntaState; o
                 </div>
                 <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] flex justify-between text-slate-400">
                   <span>Turno: {receiveDay ? format(parseISO(receiveDay.date), 'dd MMM') : '?'}</span>
-                    <span
-                      className="cursor-pointer hover:text-indigo-600 flex items-center gap-1"
-                      onClick={() => onViewDetail(p.id)}
-                    >
+                  <span
+                    className="cursor-pointer hover:text-indigo-600 flex items-center gap-1"
+                    onClick={() => onViewDetail(p.id)}
+                  >
                     <Eye className="w-3 h-3" /> Ver detalle
                   </span>
                 </div>
@@ -1965,16 +1964,16 @@ function KardexModal({ report, loading, error, onClose }: { report: KardexReport
     const step = shouldSimplify ? 3 : 1;
     return filteredDays
       .filter((_, index) => index % step === 0 || index === filteredDays.length - 1)
-      .map(day => ({ 
-        date: format(parseISO(day.date), shouldSimplify ? 'dd MMM' : 'dd LLL'), 
-        balance: day.balanceAfter 
+      .map(day => ({
+        date: format(parseISO(day.date), shouldSimplify ? 'dd MMM' : 'dd LLL'),
+        balance: day.balanceAfter
       }));
   }, [filteredDays]);
-  
+
   const totalCollected = useMemo(() => {
     return Math.round(filteredDays.reduce((sum, day) => sum + day.paid, 0) * 100) / 100;
   }, [filteredDays]);
-  
+
   const stats = report?.stats;
 
   const handleExportCSV = () => {
@@ -2055,8 +2054,8 @@ function KardexModal({ report, loading, error, onClose }: { report: KardexReport
               <p className="text-xs text-slate-500">Cumplimiento al {stats.complianceRate}% • Deuda actual: S/. {stats.globalDebt.toFixed(2)}</p>
             )}
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-2 sm:p-2 rounded-lg sm:rounded-xl hover:bg-slate-100 transition-colors"
             aria-label="Cerrar"
           >
@@ -2117,207 +2116,208 @@ function KardexModal({ report, loading, error, onClose }: { report: KardexReport
               <div className="mt-4 sm:mt-5 space-y-4 sm:space-y-6">
                 {activeTab === 'kardex' && (
                   <>
-                {chartData.length > 0 ? (
-                  <div className="w-full h-40 sm:h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748b" />
-                        <YAxis tick={{ fontSize: 11 }} stroke="#64748b" />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                          labelStyle={{ color: '#0f172a', fontWeight: 600 }}
-                        />
-                        <ReferenceLine y={0} stroke="#ef4444" strokeWidth={2} strokeDasharray="3 3" label={{ value: 'Línea de balance 0', position: 'insideTopRight', fill: '#ef4444', fontSize: 10 }} />
-                        <Line type="monotone" dataKey="balance" stroke="#6366F1" strokeWidth={3} dot={{ fill: '#6366F1', r: 4 }} activeDot={{ r: 6 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="w-full h-40 sm:h-48 flex items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                    <div className="text-center">
-                      <FileText className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                      <p className="text-slate-400 text-sm font-medium">Sin datos para mostrar</p>
-                      <p className="text-slate-400 text-xs">Ajusta los filtros para ver resultados</p>
+                    {chartData.length > 0 ? (
+                      <div className="w-full h-40 sm:h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#64748b" />
+                            <YAxis tick={{ fontSize: 11 }} stroke="#64748b" />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                              labelStyle={{ color: '#0f172a', fontWeight: 600 }}
+                            />
+                            <ReferenceLine y={0} stroke="#ef4444" strokeWidth={2} strokeDasharray="3 3" label={{ value: 'Línea de balance 0', position: 'insideTopRight', fill: '#ef4444', fontSize: 10 }} />
+                            <Line type="monotone" dataKey="balance" stroke="#6366F1" strokeWidth={3} dot={{ fill: '#6366F1', r: 4 }} activeDot={{ r: 6 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="w-full h-40 sm:h-48 flex items-center justify-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                        <div className="text-center">
+                          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                          <p className="text-slate-400 text-sm font-medium">Sin datos para mostrar</p>
+                          <p className="text-slate-400 text-xs">Ajusta los filtros para ver resultados</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 flex-1 w-full">
+                        <div>
+                          <label className="text-[10px] font-semibold uppercase text-slate-400">Estado</label>
+                          <Select value={filters.status} onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as KardexFilterState['status'] }))}>
+                            <option value="ALL">Todos</option>
+                            <option value="COMPLETED">Completos</option>
+                            <option value="PARTIAL">Parciales</option>
+                            <option value="MISSING">Pendientes</option>
+                            <option value="FUTURE">Futuros</option>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold uppercase text-slate-400">Método</label>
+                          <Select value={filters.method} onChange={(e) => setFilters(prev => ({ ...prev, method: e.target.value as KardexFilterState['method'] }))}>
+                            <option value="ALL">Todos</option>
+                            <option value="CASH">Efectivo</option>
+                            <option value="YAPE">Yape</option>
+                            <option value="DEBIT">Débito</option>
+                            <option value="CREDIT_BCP">Crédito BCP</option>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold uppercase text-slate-400">Desde</label>
+                          <Input type="date" value={filters.startDate} onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold uppercase text-slate-400">Hasta</label>
+                          <Input type="date" value={filters.endDate} onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))} />
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFilters(defaultFilters)}
+                        className="whitespace-nowrap w-full sm:w-auto"
+                        title="Limpiar filtros"
+                      >
+                        <RotateCcw className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Limpiar</span>
+                      </Button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 items-start sm:items-center justify-between">
+                      <div className="text-xs sm:text-sm text-slate-500">
+                        {filteredDays.length} registros • S/. {totalCollected.toFixed(2)} recaudados
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto items-center">
+                        {exportFeedback && (
+                          <span className={cn(
+                            "text-xs font-medium px-2 py-1 rounded",
+                            exportFeedback.includes('✓') ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          )}>
+                            {exportFeedback}
+                          </span>
+                        )}
+                        <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!report || loading} className="flex-1 sm:flex-none">
+                          <Download className="w-4 h-4" /><span className="hidden sm:inline ml-1">CSV</span>
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={!report || loading} className="flex-1 sm:flex-none">
+                          <FileText className="w-4 h-4" /><span className="hidden sm:inline ml-1">PDF</span>
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs sm:text-sm text-left">
+                          <thead className="bg-slate-50 text-slate-500 text-[10px] sm:text-xs uppercase">
+                            <tr>
+                              <th className="px-2 sm:px-4 py-2 sm:py-3">Fecha</th>
+                              <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Cuota</th>
+                              <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Pagado</th>
+                              <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Balance</th>
+                              <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Estado</th>
+                              <th className="px-2 sm:px-4 py-2 sm:py-3 hidden md:table-cell">Detalle</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredDays.map(day => {
+                              const statusLabels: Record<string, string> = {
+                                'COMPLETED': 'Completo',
+                                'PARTIAL': 'Parcial',
+                                'MISSING': 'Falta',
+                                'FUTURE': 'Futuro'
+                              };
+                              const hasDebt = day.balanceAfter < 0;
+                              return (
+                                <tr key={day.date} className={cn(
+                                  "hover:bg-slate-50 transition-colors",
+                                  hasDebt && "bg-rose-50 hover:bg-rose-100 border-l-4 border-rose-400"
+                                )}>
+                                  <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-slate-700 whitespace-nowrap">{format(parseISO(day.date), 'dd MMM')}</td>
+                                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-500">{day.expected.toFixed(0)}</td>
+                                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-mono text-slate-700">{day.paid > 0 ? day.paid.toFixed(0) : '-'}</td>
+                                  <td className={cn(
+                                    "px-2 sm:px-4 py-2 sm:py-3 text-right font-mono font-semibold",
+                                    hasDebt ? "text-rose-600" : "text-emerald-600"
+                                  )}>{day.balanceAfter.toFixed(0)}</td>
+                                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
+                                    <Badge
+                                      variant={day.status === 'COMPLETED' ? 'default' : day.status === 'MISSING' ? 'destructive' : 'outline'}
+                                      className="text-[9px] sm:text-[10px] uppercase px-1 sm:px-2 py-0.5 sm:py-1"
+                                    >
+                                      {statusLabels[day.status] || day.status}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs text-slate-500 hidden md:table-cell">
+                                    {day.transactions.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {day.transactions.map(tx => (
+                                          <div key={tx.id} className="flex items-center gap-2">
+                                            <span className="font-mono">{tx.paidAt.split('T')[0]}</span>
+                                            <span>•</span>
+                                            <span>{tx.method}</span>
+                                            {tx.destination && <span>• {tx.destination}</span>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <span className="text-slate-400">Sin movimientos</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {filteredDays.length === 0 && (
+                              <tr>
+                                <td colSpan={6} className="px-4 py-6 text-center text-slate-400">No hay registros para los filtros activos.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {activeTab === 'config' && report && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 p-3 sm:p-4 space-y-2 sm:space-y-3 shadow-sm">
+                      <p className="text-[10px] sm:text-xs uppercase text-slate-400 font-semibold">Datos del participante</p>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">Nombre</p>
+                        <p className="text-sm sm:text-base font-semibold text-slate-800">{report.participantName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">Días analizados</p>
+                        <p className="text-sm sm:text-base font-semibold text-slate-800">{report.days.length}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">Próximo turno</p>
+                        <p className="text-sm sm:text-base font-semibold text-slate-800">{stats?.nextTurnDate ?? 'Sin asignar'}</p>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 p-3 sm:p-4 space-y-2 sm:space-y-3 shadow-sm">
+                      <p className="text-[10px] sm:text-xs uppercase text-slate-400 font-semibold">Operaciones administrativas</p>
+                      <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-xs sm:text-sm text-xs sm:text-sm" size="sm">
+                        <Download className="w-3 sm:w-4 h-3 sm:h-4" /> Exportar reporte offline
+                      </Button>
+                      <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-xs sm:text-sm" size="sm">
+                        <AlertTriangle className="w-3 sm:w-4 h-3 sm:h-4" /> Dar de baja (retirar)
+                      </Button>
                     </div>
                   </div>
                 )}
-
-                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-end">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 flex-1 w-full">
-                    <div>
-                      <label className="text-[10px] font-semibold uppercase text-slate-400">Estado</label>
-                      <Select value={filters.status} onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as KardexFilterState['status'] }))}>
-                        <option value="ALL">Todos</option>
-                        <option value="COMPLETED">Completos</option>
-                        <option value="PARTIAL">Parciales</option>
-                        <option value="MISSING">Pendientes</option>
-                        <option value="FUTURE">Futuros</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold uppercase text-slate-400">Método</label>
-                      <Select value={filters.method} onChange={(e) => setFilters(prev => ({ ...prev, method: e.target.value as KardexFilterState['method'] }))}>
-                        <option value="ALL">Todos</option>
-                        <option value="CASH">Efectivo</option>
-                        <option value="YAPE">Yape</option>
-                        <option value="DEBIT">Débito</option>
-                        <option value="CREDIT_BCP">Crédito BCP</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold uppercase text-slate-400">Desde</label>
-                      <Input type="date" value={filters.startDate} onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold uppercase text-slate-400">Hasta</label>
-                      <Input type="date" value={filters.endDate} onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))} />
-                    </div>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setFilters(defaultFilters)}
-                    className="whitespace-nowrap w-full sm:w-auto"
-                    title="Limpiar filtros"
-                  >
-                    <RotateCcw className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Limpiar</span>
-                  </Button>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 items-start sm:items-center justify-between">
-                  <div className="text-xs sm:text-sm text-slate-500">
-                    {filteredDays.length} registros • S/. {totalCollected.toFixed(2)} recaudados
-                  </div>
-                  <div className="flex gap-2 w-full sm:w-auto items-center">
-                    {exportFeedback && (
-                      <span className={cn(
-                        "text-xs font-medium px-2 py-1 rounded",
-                        exportFeedback.includes('✓') ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                      )}>
-                        {exportFeedback}
-                      </span>
-                    )}
-                    <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!report || loading} className="flex-1 sm:flex-none">
-                      <Download className="w-4 h-4" /><span className="hidden sm:inline ml-1">CSV</span>
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={!report || loading} className="flex-1 sm:flex-none">
-                      <FileText className="w-4 h-4" /><span className="hidden sm:inline ml-1">PDF</span>
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs sm:text-sm text-left">
-                      <thead className="bg-slate-50 text-slate-500 text-[10px] sm:text-xs uppercase">
-                        <tr>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3">Fecha</th>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Cuota</th>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Pagado</th>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Balance</th>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Estado</th>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 hidden md:table-cell">Detalle</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredDays.map(day => {
-                          const statusLabels: Record<string, string> = {
-                            'COMPLETED': 'Completo',
-                            'PARTIAL': 'Parcial',
-                            'MISSING': 'Falta',
-                            'FUTURE': 'Futuro'
-                          };
-                          const hasDebt = day.balanceAfter < 0;
-                          return (
-                          <tr key={day.date} className={cn(
-                            "hover:bg-slate-50 transition-colors",
-                            hasDebt && "bg-rose-50 hover:bg-rose-100 border-l-4 border-rose-400"
-                          )}>
-                            <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium text-slate-700 whitespace-nowrap">{format(parseISO(day.date), 'dd MMM')}</td>
-                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-right text-slate-500">{day.expected.toFixed(0)}</td>
-                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-mono text-slate-700">{day.paid > 0 ? day.paid.toFixed(0) : '-'}</td>
-                            <td className={cn(
-                              "px-2 sm:px-4 py-2 sm:py-3 text-right font-mono font-semibold",
-                              hasDebt ? "text-rose-600" : "text-emerald-600"
-                            )}>{day.balanceAfter.toFixed(0)}</td>
-                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
-                              <Badge
-                                variant={day.status === 'COMPLETED' ? 'default' : day.status === 'MISSING' ? 'destructive' : 'outline'}
-                                className="text-[9px] sm:text-[10px] uppercase px-1 sm:px-2 py-0.5 sm:py-1"
-                              >
-                                {statusLabels[day.status] || day.status}
-                              </Badge>
-                            </td>
-                            <td className="px-2 sm:px-4 py-2 sm:py-3 text-xs text-slate-500 hidden md:table-cell">
-                              {day.transactions.length > 0 ? (
-                                <div className="space-y-1">
-                                  {day.transactions.map(tx => (
-                                    <div key={tx.id} className="flex items-center gap-2">
-                                      <span className="font-mono">{tx.paidAt.split('T')[0]}</span>
-                                      <span>•</span>
-                                      <span>{tx.method}</span>
-                                      {tx.destination && <span>• {tx.destination}</span>}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-slate-400">Sin movimientos</span>
-                              )}
-                            </td>
-                          </tr>
-                        );})}
-                        {filteredDays.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="px-4 py-6 text-center text-slate-400">No hay registros para los filtros activos.</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {activeTab === 'config' && report && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 p-3 sm:p-4 space-y-2 sm:space-y-3 shadow-sm">
-                  <p className="text-[10px] sm:text-xs uppercase text-slate-400 font-semibold">Datos del participante</p>
-                  <div>
-                    <p className="text-[10px] text-slate-500 uppercase">Nombre</p>
-                    <p className="text-sm sm:text-base font-semibold text-slate-800">{report.participantName}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-500 uppercase">Días analizados</p>
-                    <p className="text-sm sm:text-base font-semibold text-slate-800">{report.days.length}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-slate-500 uppercase">Próximo turno</p>
-                    <p className="text-sm sm:text-base font-semibold text-slate-800">{stats?.nextTurnDate ?? 'Sin asignar'}</p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 p-3 sm:p-4 space-y-2 sm:space-y-3 shadow-sm">
-                  <p className="text-[10px] sm:text-xs uppercase text-slate-400 font-semibold">Operaciones administrativas</p>
-                  <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-xs sm:text-sm text-xs sm:text-sm" size="sm">
-                    <Download className="w-3 sm:w-4 h-3 sm:h-4" /> Exportar reporte offline
-                  </Button>
-                  <Button variant="outline" className="w-full flex items-center gap-2 justify-center text-xs sm:text-sm" size="sm">
-                    <AlertTriangle className="w-3 sm:w-4 h-3 sm:h-4" /> Dar de baja (retirar)
-                  </Button>
-                </div>
-              </div>
-            )}
               </div>
             </>
           )}
         </div>
-        
+
         {/* Botón de cerrar inferior para mejor accesibilidad móvil */}
         {!loading && !error && (
           <div className="sticky bottom-0 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-t from-white via-white to-transparent border-t border-slate-200">
-            <Button 
-              onClick={onClose} 
+            <Button
+              onClick={onClose}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-lg"
               size="lg"
             >
@@ -2348,7 +2348,7 @@ interface TransactionModalProps {
 function TransactionModal({ participant, targetDate, remainingDebt, onClose, onSave }: TransactionModalProps) {
   const [amount, setAmount] = useState(remainingDebt > 0 ? remainingDebt : participant.dailyCommitment);
   const [method, setMethod] = useState<'CASH' | 'YAPE' | 'DEBIT' | 'CREDIT_BCP'>('CASH');
-  const [destination, setDestination] = useState<PaymentDestination>('EFECTIVO');
+  const [destination, setDestination] = useState<CuentaDestino | null>(CuentaDestino.EFECTIVO);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -2413,13 +2413,13 @@ function TransactionModal({ participant, targetDate, remainingDebt, onClose, onS
             </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-500 uppercase">Destino</label>
-              <Select value={destination} onChange={e => setDestination(e.target.value as typeof destination)} disabled={isSubmitting}>
-                <option value="EFECTIVO">Efectivo / Caja chica</option>
-                <option value="YAPE_PILAR">Yape Pilar</option>
-                <option value="YAPE_SEBASTIAN">Yape Sebastian</option>
-                <option value="YAPE_STHEFANY">Yape Sthefany</option>
-                <option value="TRANSFERENCIA_SEBASTIAN">Transferencia Sebastian</option>
-                <option value="TRANSFERENCIA_STHEFANY">Transferencia Sthefany</option>
+              <Select value={destination || ''} onChange={e => setDestination(e.target.value as CuentaDestino)} disabled={isSubmitting}>
+                <option value={CuentaDestino.EFECTIVO}>Efectivo / Caja chica</option>
+                <option value={CuentaDestino.YAPE_PILAR}>Yape Pilar</option>
+                <option value={CuentaDestino.YAPE_SEBASTIAN}>Yape Sebastian</option>
+                <option value={CuentaDestino.YAPE_STHEFANY}>Yape Sthefany</option>
+                <option value={CuentaDestino.TRANSFERENCIA_SEBASTIAN}>Transferencia Sebastian</option>
+                <option value={CuentaDestino.TRANSFERENCIA_STHEFANY}>Transferencia Sthefany</option>
               </Select>
             </div>
           </div>
@@ -2640,8 +2640,8 @@ function ArchivedJuntasView({ juntas }: { juntas: ArchivedJuntaSummary[] }) {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2 justify-center">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleViewReport(junta.id)}
                             disabled={isLoading}
@@ -2649,8 +2649,8 @@ function ArchivedJuntasView({ juntas }: { juntas: ArchivedJuntaSummary[] }) {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleDuplicate(junta.id, junta.name)}
                             title="Duplicar junta"
