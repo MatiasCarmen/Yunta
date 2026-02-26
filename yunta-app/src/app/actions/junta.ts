@@ -282,15 +282,18 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
             });
 
             if (txData.destination && txData.destination !== 'NONE' as any) {
-                const cuenta = await tx.cajaAccount.findUnique({
-                    where: { tipoCuenta: txData.destination }
+                // Ensure CajaAccount exists for the selected destination
+                const cuenta = await tx.cajaAccount.upsert({
+                    where: { tipoCuenta: txData.destination },
+                    update: { saldoActual: { increment: new Prisma.Decimal(txData.amount) } },
+                    create: {
+                        tipoCuenta: txData.destination,
+                        saldoActual: new Prisma.Decimal(txData.amount),
+                        umbralAlerta: new Prisma.Decimal(100)
+                    }
                 });
 
                 if (cuenta) {
-                    await tx.cajaAccount.update({
-                        where: { id: cuenta.id },
-                        data: { saldoActual: { increment: new Prisma.Decimal(txData.amount) } }
-                    });
                     await tx.cajaTransaction.create({
                         data: {
                             tipo: 'INGRESO',

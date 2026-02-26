@@ -10,7 +10,7 @@ vi.mock('../database/client', () => {
             juntaPayment: { findUnique: vi.fn(), create: vi.fn() },
             juntaTurn: { findFirst: vi.fn(), update: vi.fn() },
             $transaction: vi.fn((fn) => fn(prisma)),
-            cajaAccount: { findUnique: vi.fn(), update: vi.fn() },
+            cajaAccount: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
             cajaTransaction: { create: vi.fn() }
         }
     };
