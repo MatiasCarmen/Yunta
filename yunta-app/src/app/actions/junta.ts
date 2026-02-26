@@ -18,6 +18,7 @@ export type TransactionInput = {
     method: PaymentMethod;
     destination: PaymentDestination;
     notes?: string;
+    clientTxId?: string;
 };
 
 export type JuntaState = {
@@ -247,7 +248,15 @@ export async function getActiveJunta() {
 
 export async function recordPayment(juntaId: string, txData: TransactionInput) {
     try {
-        // 1. Find the Turn corresponding to the Date
+        if (txData.clientTxId) {
+            const existing = await prisma.juntaPayment.findUnique({
+                where: { clientTxId: txData.clientTxId }
+            });
+            if (existing) {
+                return { success: true, idempotent: true, message: "Sincronizado previamente (Idempotencia)" };
+            }
+        }
+
         const targetDate = new Date(txData.targetDate);
         const turn = await prisma.juntaTurn.findFirst({
             where: {
@@ -257,24 +266,57 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
         });
 
         if (!turn) throw new Error("No turn found for this date.");
+        if (turn.isClosed) throw new Error("Este turno ya está cerrado.");
 
-        // 2. Create Payment
-        await prisma.juntaPayment.create({
-            data: {
-                turnId: turn.id,
-                shareId: txData.participantId,
-                amount: new Prisma.Decimal(txData.amount),
-                method: txData.method,
-                destination: txData.destination,
-                notes: txData.notes
+        await prisma.$transaction(async (tx) => {
+            const payment = await tx.juntaPayment.create({
+                data: {
+                    turnId: turn.id,
+                    shareId: txData.participantId,
+                    amount: new Prisma.Decimal(txData.amount),
+                    method: txData.method,
+                    destination: txData.destination,
+                    notes: txData.notes,
+                    clientTxId: txData.clientTxId
+                }
+            });
+
+            if (txData.destination && txData.destination !== 'NONE' as any) {
+                const cuenta = await tx.cajaAccount.findUnique({
+                    where: { tipoCuenta: txData.destination }
+                });
+
+                if (cuenta) {
+                    await tx.cajaAccount.update({
+                        where: { id: cuenta.id },
+                        data: { saldoActual: { increment: new Prisma.Decimal(txData.amount) } }
+                    });
+                    await tx.cajaTransaction.create({
+                        data: {
+                            tipo: 'INGRESO',
+                            monto: new Prisma.Decimal(txData.amount),
+                            descripcion: `Cobro de Junta (Turno ${turn.turnNumber})`,
+                            juntaPaymentId: payment.id,
+                            cuentaDestinoId: cuenta.id,
+                            fecha: new Date()
+                        }
+                    });
+                }
             }
         });
 
         revalidatePath('/dashboard/junta');
         return { success: true };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error recording payment:", error);
+
+        // Handle Prisma unique constraint violation (P2002) for race conditions
+        if (error.code === 'P2002' && error.meta?.target?.includes('clientTxId')) {
+            console.log("Idempotency caught via unique constraint.");
+            return { success: true, idempotent: true, message: "Sincronizado previamente (Idempotencia via DB)" };
+        }
+
         return { success: false, error: String(error) };
     }
 }
@@ -283,15 +325,46 @@ export async function closeDay(juntaId: string, date: string) {
     try {
         const targetDate = new Date(date);
         const turn = await prisma.juntaTurn.findFirst({
-            where: { juntaId, date: targetDate }
+            where: { juntaId, date: targetDate },
+            include: { payments: true }
         });
 
         if (!turn) throw new Error("Turno no encontrado para esta fecha.");
 
-        await prisma.juntaTurn.update({
-            where: { id: turn.id },
-            data: { isClosed: true }
-        });
+        // Determinar snapshot: montos del día
+        const totalCollected = turn.payments.reduce((acc, p) => acc + Number(p.amount), 0);
+        const totalExpected = Number(turn.expectedAmount);
+
+        const participantsSnapshot = turn.payments.map(p => ({
+            shareId: p.shareId,
+            amount: Number(p.amount)
+        }));
+
+        const snapshot = {
+            expected: totalExpected,
+            collected: totalCollected,
+            diff: totalExpected - totalCollected,
+            participants: participantsSnapshot,
+            format: 'v1'
+        };
+
+        if (turn.isClosed) {
+            // Reopen day
+            await prisma.juntaTurn.update({
+                where: { id: turn.id },
+                data: { isClosed: false }
+            });
+        } else {
+            // Close day
+            await prisma.juntaTurn.update({
+                where: { id: turn.id },
+                data: {
+                    isClosed: true,
+                    closedAt: new Date(),
+                    snapshotJson: JSON.stringify(snapshot)
+                }
+            });
+        }
 
         revalidatePath('/dashboard/junta');
         return { success: true };
