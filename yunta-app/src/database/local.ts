@@ -1,41 +1,28 @@
-// ============================================
-// YUNTA - Local Database (Dexie.js)
-// ============================================
-// Base de datos local para soporte Offline-First
-// Almacena transacciones pendientes y caché de datos
-// ============================================
-
 import Dexie, { type Table } from 'dexie';
-import type { TransactionType, PaymentMethod, ExpenseCategory } from '@prisma/client';
+import type { TransactionInput } from '@/app/actions/junta';
 
 // ============================================
 // INTERFACES LOCALES
 // ============================================
 
-export interface PendingTransaction {
-    id?: number; // Auto-incremental local
-    tempId: string; // UUID temporal generado en frontend
-    amount: number;
-    type: TransactionType;
-    method: PaymentMethod;
-    category?: ExpenseCategory | null;
-    description: string;
-    notes?: string | null;
-    date: Date;
-    receipt?: string | null;
-    userId: string;
+export interface PendingPayment {
+    id?: number;
+    clientTxId: string;
+    payload: TransactionInput;
+    status: 'PENDING' | 'SYNCED' | 'FAILED';
+    attempts: number;
+    lastError?: string;
     createdAt: Date;
-    status: 'PENDING' | 'SYNCING' | 'ERROR'; // Estado de sincronización
 }
 
 export interface LocalMeeting {
-    id?: number; // ID autoincremental local
+    id?: number;
     title: string;
-    participants: string[]; // Lista de IDs de usuarios
-    content: string; // Minuta completa
-    agreements: string; // Acuerdos tomados
+    participants: string[];
+    content: string;
+    agreements: string;
     date: Date;
-    synced: number; // 0 = Pendiente de subir, 1 = Sincronizado
+    synced: number;
 }
 
 // ============================================
@@ -43,57 +30,63 @@ export interface LocalMeeting {
 // ============================================
 
 export class YuntaLocalDB extends Dexie {
-    // Tablas
-    pendingTransactions!: Table<PendingTransaction>;
+    pendingPayments!: Table<PendingPayment>;
     meetings!: Table<LocalMeeting>;
 
     constructor() {
         super('YuntaLocalDB');
 
-        // Versión 1 original
-        // this.version(1).stores({ pendingTransactions: '++id, tempId, status, userId, date' });
-
-        // Versión 2: Agregamos meetings
-        this.version(2).stores({
-            // Transacciones pendientes de subida
-            pendingTransactions: '++id, tempId, status, userId, date',
-
-            // Juntas locales (cache y pendientes)
+        // Increment version to 3 to add pendingPayments
+        this.version(3).stores({
+            pendingPayments: '++id, clientTxId, status',
             meetings: '++id, title, date, synced'
         });
     }
 }
 
-// Singleton de la DB
 export const localDb = new YuntaLocalDB();
 
 // ============================================
-// HOOKS Y UTILIDADES
+// PENDING PAYMENTS (OFFLINE QUEUE)
 // ============================================
 
-/**
- * Guarda una transacción localmente cuando no hay internet
- */
-export async function saveTransactionOffline(data: Omit<PendingTransaction, 'id' | 'status' | 'createdAt'>) {
+export async function enqueuePendingPayment(payload: TransactionInput) {
+    if (!payload.clientTxId) throw new Error("clientTxId required for offline queue");
     try {
-        await localDb.pendingTransactions.add({
-            ...data,
+        await localDb.pendingPayments.add({
+            clientTxId: payload.clientTxId,
+            payload,
             status: 'PENDING',
+            attempts: 0,
             createdAt: new Date(),
         });
         return true;
     } catch (error) {
-        console.error('Error guardando offline:', error);
+        console.error('Error enqueuing payment offline:', error);
         return false;
     }
 }
 
-/**
- * Obtiene transacciones pendientes para sincronizar
- */
-export async function getPendingTransactions() {
-    return await localDb.pendingTransactions
+export async function getPendingPayments() {
+    return await localDb.pendingPayments
         .where('status')
         .equals('PENDING')
         .toArray();
+}
+
+export async function markPendingFailed(id: number, error: string) {
+    const record = await localDb.pendingPayments.get(id);
+    if (record) {
+        const attempts = record.attempts + 1;
+        const status = attempts >= 5 ? 'FAILED' : 'PENDING';
+        await localDb.pendingPayments.update(id, {
+            status,
+            attempts,
+            lastError: String(error)
+        });
+    }
+}
+
+export async function deletePending(id: number) {
+    await localDb.pendingPayments.delete(id);
 }
