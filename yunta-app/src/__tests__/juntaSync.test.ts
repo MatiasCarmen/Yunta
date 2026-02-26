@@ -28,7 +28,7 @@ describe('Junta Sync & Financiamiento', () => {
         (prisma.juntaPayment.findUnique as any).mockResolvedValueOnce({ id: 'existing_pmt' });
 
         const res = await recordPayment('test-junta', {
-            targetDate: '2023-10-10', participantId: 'user1', amount: 100, method: 'YAPE', destination: 'YAPE_ADMIN', clientTxId: 'txn-123'
+            targetDate: '2023-10-10', participantId: 'user1', amount: 100, method: 'YAPE', destination: 'YAPE_SEBASTIAN', clientTxId: 'txn-123'
         });
 
         expect(res.success).toBe(true);
@@ -46,7 +46,7 @@ describe('Junta Sync & Financiamiento', () => {
         });
 
         const res = await recordPayment('test-junta', {
-            targetDate: '2023-10-10', participantId: 'user1', amount: 100, method: 'YAPE', destination: 'YAPE_ADMIN', clientTxId: 'txn-race'
+            targetDate: '2023-10-10', participantId: 'user1', amount: 100, method: 'YAPE', destination: 'YAPE_SEBASTIAN', clientTxId: 'txn-race'
         });
 
         expect(res.success).toBe(true);
@@ -58,7 +58,7 @@ describe('Junta Sync & Financiamiento', () => {
         (prisma.juntaTurn.findFirst as any).mockResolvedValueOnce({ id: 'turn1', isClosed: true });
 
         const res = await recordPayment('test-junta', {
-            targetDate: '2023-10-10', participantId: 'user1', amount: 100, method: 'YAPE', destination: 'YAPE_ADMIN', clientTxId: 'txn-125'
+            targetDate: '2023-10-10', participantId: 'user1', amount: 100, method: 'YAPE', destination: 'YAPE_SEBASTIAN', clientTxId: 'txn-125'
         });
 
         expect(res.success).toBe(false);
@@ -67,7 +67,7 @@ describe('Junta Sync & Financiamiento', () => {
     });
 
     it('4. Offline enqueue/getPendingPayments work correctly with Dexie', async () => {
-        const payload = { targetDate: '2023-10-10', participantId: 'user1', amount: 50, method: 'YAPE' as any, destination: 'YAPE_ADMIN' as any, clientTxId: 'off-1' };
+        const payload = { targetDate: '2023-10-10', participantId: 'user1', amount: 50, method: 'YAPE' as any, destination: 'YAPE_SEBASTIAN' as any, clientTxId: 'off-1' };
 
         await enqueuePendingPayment(payload);
         const records = await getPendingPayments();
@@ -83,7 +83,7 @@ describe('Junta Sync & Financiamiento', () => {
     });
 
     it('5. Fallback a FAILED despues de 5 intentos', async () => {
-        const payload = { targetDate: '2023-10-10', participantId: 'user1', amount: 50, method: 'YAPE' as any, destination: 'YAPE_ADMIN' as any, clientTxId: 'off-failed' };
+        const payload = { targetDate: '2023-10-10', participantId: 'user1', amount: 50, method: 'YAPE' as any, destination: 'YAPE_SEBASTIAN' as any, clientTxId: 'off-failed' };
         await enqueuePendingPayment(payload);
         const pendings = await getPendingPayments();
         const id = pendings[0].id!;
