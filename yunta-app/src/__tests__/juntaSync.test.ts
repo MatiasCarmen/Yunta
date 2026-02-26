@@ -11,7 +11,8 @@ vi.mock('../database/client', () => {
             juntaTurn: { findFirst: vi.fn(), update: vi.fn() },
             $transaction: vi.fn((fn) => fn(prisma)),
             cajaAccount: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn(), findMany: vi.fn() },
-            cajaTransaction: { create: vi.fn(), findMany: vi.fn() }
+            cajaTransaction: { create: vi.fn(), findMany: vi.fn() },
+            auditLog: { create: vi.fn() }
         }
     };
 });
@@ -106,8 +107,8 @@ describe('Junta Sync & Financiamiento', () => {
             expectedAmount: 200,
             isClosed: false,
             payments: [
-                { shareId: 'user1', amount: 100 },
-                { shareId: 'user2', amount: 50 }, // Total = 150
+                { shareId: 'user1', amount: 100, paidAt: new Date(), id: 'p1', method: 'YAPE', destination: 'YAPE_SEBASTIAN', clientTxId: 'a1' },
+                { shareId: 'user2', amount: 50, paidAt: new Date(), id: 'p2', method: 'CASH', destination: 'EFECTIVO', clientTxId: 'a2' }, // Total = 150
             ]
         };
         (prisma.juntaTurn.findFirst as any).mockResolvedValueOnce(mockTurn);
@@ -129,8 +130,8 @@ describe('Junta Sync & Financiamiento', () => {
         expect(snapshot.diff).toBe(50);
     });
 
-    it('7. rebuildCajaBalances: recalculates correctly and reports diff', async () => {
-        const { rebuildCajaBalances } = await import('../app/actions/caja');
+    it('7. dryRunRebuildCajaBalances no cambia DB, y applyRebuildCajaBalances guarda log', async () => {
+        const { dryRunRebuildCajaBalances, applyRebuildCajaBalances } = await import('../app/actions/caja');
 
         const mockCuentas = [
             { id: 'cta-yape', tipoCuenta: 'YAPE_SEBASTIAN', saldoActual: 100 } // Incorrect saldo
@@ -144,24 +145,59 @@ describe('Junta Sync & Financiamiento', () => {
             { tipo: 'INGRESO', monto: 300, cuentaDestinoId: 'cta-yape' }
         ];
 
-        (prisma.cajaAccount.findMany as any).mockResolvedValueOnce(mockCuentas);
+        (prisma.cajaAccount.findMany as any).mockResolvedValue(mockCuentas);
 
         // Sequence of findMany inside the loop
         (prisma.cajaTransaction.findMany as any)
-            .mockResolvedValueOnce(mockOriginTxs) // First call: origin
-            .mockResolvedValueOnce(mockDestTxs);  // Second call: dest
+            .mockResolvedValueOnce(mockOriginTxs) // First call: origin for dryRun
+            .mockResolvedValueOnce(mockDestTxs)  // Second call: dest for dryRun
+            .mockResolvedValueOnce(mockOriginTxs) // First call: origin for apply
+            .mockResolvedValueOnce(mockDestTxs);  // Second call: dest for apply
 
-        const res = await rebuildCajaBalances();
+        const dryRes = await dryRunRebuildCajaBalances();
 
-        expect(res.success).toBe(true);
-        expect(res.report?.length).toBe(1);
-        expect(res.report![0].diff).toBe(150); // 250 calculated - 100 previous = 150
-        expect(res.report![0].saldoRecalculado).toBe(250);
+        expect(dryRes.success).toBe(true);
+        expect(dryRes.report?.length).toBe(1);
+        expect(dryRes.report![0].diff).toBe(150); // 250 calculated - 100 previous = 150
+        expect(dryRes.report![0].saldoRecalculado).toBe(250);
 
-        // Verify update was called to correct the mathematical reality
+        // Verify update was NOT called 
+        expect(prisma.cajaAccount.update).not.toHaveBeenCalled();
+
+        const applyRes = await applyRebuildCajaBalances();
+
+        expect(applyRes.success).toBe(true);
+        // Verify update was called
         expect(prisma.cajaAccount.update).toHaveBeenCalledWith({
             where: { id: 'cta-yape' },
             data: { saldoActual: 250 }
         });
+        expect((prisma as any).auditLog.create).toHaveBeenCalled();
+    });
+
+    it('8. lock system prevents double applyRebuildCajaBalances concurrently', async () => {
+        const { applyRebuildCajaBalances } = await import('../app/actions/caja');
+
+        const mockCuentas = [{ id: 'cta-eff', tipoCuenta: 'EFECTIVO', saldoActual: 0 }];
+        (prisma.cajaAccount.findMany as any).mockResolvedValue(mockCuentas);
+        (prisma.cajaTransaction.findMany as any).mockResolvedValue([]);
+
+        // Force a slow transaction to hold the lock
+        (prisma.$transaction as any).mockImplementationOnce(async (cb: any) => {
+            return new Promise(resolve => {
+                setTimeout(async () => {
+                    resolve(await cb(prisma));
+                }, 500);
+            });
+        });
+
+        const p1 = applyRebuildCajaBalances();
+        const p2 = applyRebuildCajaBalances();
+
+        const [r1, r2] = await Promise.all([p1, p2]);
+
+        expect(r1.success).toBe(true);
+        expect(r2.success).toBe(false);
+        expect(r2.error).toMatch(/en curso/);
     });
 });

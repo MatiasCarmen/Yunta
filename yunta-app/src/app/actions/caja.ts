@@ -340,68 +340,95 @@ export type RebuildReportItem = {
   diff: number;
 };
 
-export async function rebuildCajaBalances() {
+// Global lock to prevent concurrent rebuilds
+let isRebuilding = false;
+
+async function calculateRebuildReport(tx: Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"> | typeof prisma = prisma) {
+  const report: RebuildReportItem[] = [];
+  const cuentas = await tx.cajaAccount.findMany();
+
+  for (const cuenta of cuentas) {
+    const originRecords = await tx.cajaTransaction.findMany({
+      where: { cuentaOrigenId: cuenta.id }
+    });
+    const destRecords = await tx.cajaTransaction.findMany({
+      where: { cuentaDestinoId: cuenta.id }
+    });
+
+    let calculated = 0;
+    for (const mov of originRecords) {
+      if (mov.tipo === 'EGRESO' || mov.tipo === 'TRANSFERENCIA') calculated -= Number(mov.monto);
+    }
+    for (const mov of destRecords) {
+      if (mov.tipo === 'INGRESO' || mov.tipo === 'TRANSFERENCIA') calculated += Number(mov.monto);
+    }
+
+    const saldoPrevio = Number(cuenta.saldoActual);
+    const diff = calculated - saldoPrevio;
+
+    report.push({
+      accountId: cuenta.id,
+      tipoCuenta: cuenta.tipoCuenta,
+      saldoPrevio,
+      saldoRecalculado: calculated,
+      diff
+    });
+  }
+  return report;
+}
+
+export async function dryRunRebuildCajaBalances() {
   try {
-    const report: RebuildReportItem[] = [];
+    const report = await calculateRebuildReport();
+    return { success: true, report };
+  } catch (error: any) {
+    console.error("Error al simular saldos de caja:", error);
+    return { success: false, error: String(error) };
+  }
+}
 
-    await prisma.$transaction(async (tx) => {
-      const cuentas = await tx.cajaAccount.findMany();
+export async function applyRebuildCajaBalances() {
+  if (isRebuilding) return { success: false, error: "Ya hay una reconstrucción en curso." };
+  isRebuilding = true;
 
-      for (const cuenta of cuentas) {
-        // Encontrar todas las transacciones donde esta cuenta originó dinero (-saldo)
-        const originRecords = await tx.cajaTransaction.findMany({
-          where: { cuentaOrigenId: cuenta.id }
-        });
+  try {
+    let diffTotal = 0;
+    const finalReport = await prisma.$transaction(async (tx) => {
+      const report = await calculateRebuildReport(tx);
+      const changedAccounts = [];
 
-        // Encontrar todas las transacciones donde esta cuenta recibió dinero (+saldo)
-        const destRecords = await tx.cajaTransaction.findMany({
-          where: { cuentaDestinoId: cuenta.id }
-        });
-
-        let calculated = 0;
-
-        // Egresos reducen
-        for (const mov of originRecords) {
-          if (mov.tipo === 'EGRESO' || mov.tipo === 'TRANSFERENCIA') {
-            calculated -= Number(mov.monto);
-          }
-        }
-
-        // Ingresos suman
-        for (const mov of destRecords) {
-          if (mov.tipo === 'INGRESO' || mov.tipo === 'TRANSFERENCIA') {
-            calculated += Number(mov.monto);
-          }
-        }
-
-        const saldoPrevio = Number(cuenta.saldoActual);
-        const diff = calculated - saldoPrevio;
-
-        report.push({
-          accountId: cuenta.id,
-          tipoCuenta: cuenta.tipoCuenta,
-          saldoPrevio,
-          saldoRecalculado: calculated,
-          diff
-        });
-
-        // Sincronizar (Actualizar a realidad matemática)
-        if (diff !== 0) {
+      for (const item of report) {
+        // Sincronizar
+        if (item.diff !== 0) {
+          diffTotal += Math.abs(item.diff);
+          changedAccounts.push({ accountId: item.accountId, diff: item.diff });
           await tx.cajaAccount.update({
-            where: { id: cuenta.id },
-            data: { saldoActual: calculated }
+            where: { id: item.accountId },
+            data: { saldoActual: item.saldoRecalculado }
           });
         }
       }
+
+      await tx.auditLog.create({
+        data: {
+          action: 'REBUILD_CAJA',
+          diffTotal,
+          details: JSON.stringify(changedAccounts)
+        }
+      });
+
+      return report;
     });
 
     revalidatePath("/dashboard/junta/caja");
     revalidatePath("/dashboard/junta");
 
-    return { success: true, report };
+    return { success: true, report: finalReport };
   } catch (error: any) {
-    console.error("Error al reconstruir saldos de caja:", error);
+    console.error("Error al aplicar saldos de caja:", error);
     return { success: false, error: String(error) };
+  } finally {
+    isRebuilding = false;
   }
 }
 

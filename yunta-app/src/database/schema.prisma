@@ -11,8 +11,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -538,98 +539,98 @@ model MeetingAttendance {
 // ============================================
 
 model Junta {
-  id          String    @id @default(uuid())
+  id          String   @id @default(uuid())
   name        String
   description String?
   startDate   DateTime
-  amount      Decimal  
-  currency    String    @default("PEN")
-  frequency   String    @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
-  duration    Int       // Duración en periodos (días, semanas...)
-  
-  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED, ARCHIVED
+  amount      Decimal
+  currency    String   @default("PEN")
+  frequency   String   @default("DAILY") // DAILY, WEEKLY, BIWEEKLY, MONTHLY
+  duration    Int // Duración en periodos (días, semanas...)
 
-  adminId     String
-  admin       User      @relation("JuntaAdmin", fields: [adminId], references: [id])
-  
-  shares      JuntaShare[]
-  turns       JuntaTurn[]
+  status String @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED, ARCHIVED
+
+  adminId String
+  admin   User   @relation("JuntaAdmin", fields: [adminId], references: [id])
+
+  shares JuntaShare[]
+  turns  JuntaTurn[]
 
   // Campos para archivo y reporte final
-  archivedAt   DateTime? // Fecha cuando se archivó la junta
-  endedAt      DateTime? // Fecha real de finalización
-  archiveReason String?  // Motivo del archivo (opcional)
+  archivedAt      DateTime? // Fecha cuando se archivó la junta
+  endedAt         DateTime? // Fecha real de finalización
+  archiveReason   String? // Motivo del archivo (opcional)
   finalReportJson String? // JSON con reporte completo al archivar
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("juntas")
 }
 
 model JuntaShare {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   juntaId   String
-  junta     Junta    @relation(fields: [juntaId], references: [id], onDelete: Cascade)
-  userId    String?  // Puede ser un usuario del sistema (opcional)
-  guestName String?  // O un invitado externo (nombre texto simple)
-  
-  user      User?    @relation(fields: [userId], references: [id])
-  
+  junta     Junta   @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  userId    String? // Puede ser un usuario del sistema (opcional)
+  guestName String? // O un invitado externo (nombre texto simple)
+
+  user User? @relation(fields: [userId], references: [id])
+
   committedAmount Decimal @default(0) // Monto diario comprometido
 
   createdAt DateTime @default(now())
 
   // Un usuario puede tener varios turnos asignados
-  turns     JuntaTurn[] 
+  turns JuntaTurn[]
 
   @@map("junta_shares")
 }
 
 model JuntaTurn {
-  id          String     @id @default(uuid())
-  juntaId     String
-  junta       Junta      @relation(fields: [juntaId], references: [id], onDelete: Cascade)
-  
-  turnNumber  Int        // Número de turno (1, 2, 3...)
-  date        DateTime   // Fecha programada de pago
-  
+  id      String @id @default(uuid())
+  juntaId String
+  junta   Junta  @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+
+  turnNumber Int // Número de turno (1, 2, 3...)
+  date       DateTime // Fecha programada de pago
+
   beneficiaryId String
   beneficiary   JuntaShare @relation(fields: [beneficiaryId], references: [id])
-  
+
   expectedAmount Decimal
-  status         String  @default("PENDING") // PENDING, FUNDED, PAID_OUT
-  isClosed       Boolean @default(false)
+  status         String    @default("PENDING") // PENDING, FUNDED, PAID_OUT
+  isClosed       Boolean   @default(false)
   closedAt       DateTime?
   snapshotJson   String? // Guarda totales al cerrar: { expected, collected, diff, format }
-  
-  payments    JuntaPayment[] // Aportes de los otros participantes para este turno
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  payments JuntaPayment[] // Aportes de los otros participantes para este turno
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("junta_turns")
 }
 
 model JuntaPayment {
-  id          String     @id @default(uuid())
-  turnId      String
-  turn        JuntaTurn  @relation(fields: [turnId], references: [id], onDelete: Cascade)
-  
-  shareId     String     // Qué "share" está pagando
-  amount      Decimal   
-  paidAt      DateTime   @default(now())
-  method      PaymentMethod 
-  
-  status      String     @default("CONFIRMED") // PENDING_VERIFICATION, CONFIRMED
-  evidenceUrl String?    // Foto del voucher
-  
-  destination CuentaDestino?    // A qué cuenta se pagó
-  notes       String?    // Observaciones
+  id     String    @id @default(uuid())
+  turnId String
+  turn   JuntaTurn @relation(fields: [turnId], references: [id], onDelete: Cascade)
 
-  clientTxId  String?    @unique // Para offline sync e idempotencia
+  shareId String // Qué "share" está pagando
+  amount  Decimal
+  paidAt  DateTime      @default(now())
+  method  PaymentMethod
 
-  createdAt   DateTime @default(now())
+  status      String  @default("CONFIRMED") // PENDING_VERIFICATION, CONFIRMED
+  evidenceUrl String? // Foto del voucher
+
+  destination CuentaDestino? // A qué cuenta se pagó
+  notes       String? // Observaciones
+
+  clientTxId String? @unique // Para offline sync e idempotencia
+
+  createdAt DateTime @default(now())
 
   @@map("junta_payments")
 }
@@ -640,84 +641,98 @@ model JuntaPayment {
 
 /// Representa cada cuenta de caja (Yape, Transferencia, Efectivo)
 model CajaAccount {
-  id              String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   /// Tipo de cuenta
-  tipoCuenta      CuentaDestino @unique
-  
+  tipoCuenta CuentaDestino @unique
+
   /// Saldo actual en la cuenta
-  saldoActual     Decimal @default(0)
-  
+  saldoActual Decimal @default(0)
+
   /// Umbral de alerta para saldo bajo
-  umbralAlerta    Decimal @default(100)
-  
+  umbralAlerta Decimal @default(100)
+
   /// Observaciones de la cuenta
-  notas           String?
-  
+  notas String?
+
   /// Última actualización del saldo
   ultimaActualizacion DateTime @updatedAt
-  
+
   /// Movimientos relacionados a esta cuenta
-  movimientosOrigen      CajaTransaction[] @relation("CuentaOrigen")
-  movimientosDestino     CajaTransaction[] @relation("CuentaDestino")
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  movimientosOrigen  CajaTransaction[] @relation("CuentaOrigen")
+  movimientosDestino CajaTransaction[] @relation("CuentaDestino")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("caja_accounts")
 }
 
 /// Representa cada movimiento de dinero en la caja
 model CajaTransaction {
-  id              String   @id @default(uuid())
-  
+  id String @id @default(uuid())
+
   /// Tipo de movimiento
-  tipo            TipoMovimientoCaja
-  
+  tipo TipoMovimientoCaja
+
   /// Monto del movimiento
-  monto           Decimal
-  
+  monto Decimal
+
   /// Cuenta de origen (para egresos y transferencias)
-  cuentaOrigenId  String?
-  cuentaOrigen    CajaAccount? @relation("CuentaOrigen", fields: [cuentaOrigenId], references: [id])
-  
+  cuentaOrigenId String?
+  cuentaOrigen   CajaAccount? @relation("CuentaOrigen", fields: [cuentaOrigenId], references: [id])
+
   /// Cuenta de destino (para ingresos y transferencias)
   cuentaDestinoId String?
   cuentaDestino   CajaAccount? @relation("CuentaDestino", fields: [cuentaDestinoId], references: [id])
-  
+
   /// Descripción del movimiento
-  descripcion     String
-  
+  descripcion String
+
   /// Categoría (si es egreso)
-  categoria       ExpenseCategory?
-  
+  categoria ExpenseCategory?
+
   /// Beneficiario (nombre de persona que recibe el dinero en caso de egreso)
-  beneficiario    String?
-  
+  beneficiario String?
+
   /// Referencia a pago de junta si aplica
-  juntaPaymentId  String?
-  
+  juntaPaymentId String?
+
   /// Referencia a turno de junta si aplica
-  juntaTurnId     String?
-  
+  juntaTurnId String?
+
   /// Usuario que registró el movimiento
-  registradoPor   String?
-  
+  registradoPor String?
+
   /// Fecha del movimiento
-  fecha           DateTime @default(now())
-  
+  fecha DateTime @default(now())
+
   /// Comprobante o evidencia
-  evidenciaUrl    String?
-  
+  evidenciaUrl String?
+
   /// Notas adicionales
-  notas           String?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  notas String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([tipo])
   @@index([cuentaOrigenId])
   @@index([cuentaDestinoId])
   @@index([fecha])
   @@map("caja_transactions")
+}
+
+// ============================================
+// MODELOS DE AUDITORIA
+// ============================================
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  diffTotal Decimal
+  details   String // JSON stringified with affected accounts
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
 }
