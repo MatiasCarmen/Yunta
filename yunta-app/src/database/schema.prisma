@@ -600,6 +600,8 @@ model JuntaTurn {
   expectedAmount Decimal
   status         String  @default("PENDING") // PENDING, FUNDED, PAID_OUT
   isClosed       Boolean @default(false)
+  closedAt       DateTime?
+  snapshotJson   String? // Guarda totales al cerrar: { expected, collected, diff, format }
   
   payments    JuntaPayment[] // Aportes de los otros participantes para este turno
 
@@ -624,6 +626,8 @@ model JuntaPayment {
   
   destination CuentaDestino?    // A qué cuenta se pagó
   notes       String?    // Observaciones
+
+  clientTxId  String?    @unique // Para offline sync e idempotencia
 
   createdAt   DateTime @default(now())
 
