@@ -329,6 +329,83 @@ export async function inicializarCuentasCaja(): Promise<{
 }
 
 // ============================================
+// AUDITORIA Y MANTENIMIENTO
+// ============================================
+
+export type RebuildReportItem = {
+  accountId: string;
+  tipoCuenta: string;
+  saldoPrevio: number;
+  saldoRecalculado: number;
+  diff: number;
+};
+
+export async function rebuildCajaBalances() {
+  try {
+    const report: RebuildReportItem[] = [];
+
+    await prisma.$transaction(async (tx) => {
+      const cuentas = await tx.cajaAccount.findMany();
+
+      for (const cuenta of cuentas) {
+        // Encontrar todas las transacciones donde esta cuenta originó dinero (-saldo)
+        const originRecords = await tx.cajaTransaction.findMany({
+          where: { cuentaOrigenId: cuenta.id }
+        });
+
+        // Encontrar todas las transacciones donde esta cuenta recibió dinero (+saldo)
+        const destRecords = await tx.cajaTransaction.findMany({
+          where: { cuentaDestinoId: cuenta.id }
+        });
+
+        let calculated = 0;
+
+        // Egresos reducen
+        for (const mov of originRecords) {
+          if (mov.tipo === 'EGRESO' || mov.tipo === 'TRANSFERENCIA') {
+            calculated -= Number(mov.monto);
+          }
+        }
+
+        // Ingresos suman
+        for (const mov of destRecords) {
+          if (mov.tipo === 'INGRESO' || mov.tipo === 'TRANSFERENCIA') {
+            calculated += Number(mov.monto);
+          }
+        }
+
+        const saldoPrevio = Number(cuenta.saldoActual);
+        const diff = calculated - saldoPrevio;
+
+        report.push({
+          accountId: cuenta.id,
+          tipoCuenta: cuenta.tipoCuenta,
+          saldoPrevio,
+          saldoRecalculado: calculated,
+          diff
+        });
+
+        // Sincronizar (Actualizar a realidad matemática)
+        if (diff !== 0) {
+          await tx.cajaAccount.update({
+            where: { id: cuenta.id },
+            data: { saldoActual: calculated }
+          });
+        }
+      }
+    });
+
+    revalidatePath("/dashboard/junta/caja");
+    revalidatePath("/dashboard/junta");
+
+    return { success: true, report };
+  } catch (error: any) {
+    console.error("Error al reconstruir saldos de caja:", error);
+    return { success: false, error: String(error) };
+  }
+}
+
+// ============================================
 // UTILIDADES
 // ============================================
 
@@ -343,3 +420,4 @@ function getCuentaLabel(tipo: CuentaDestino): string {
   };
   return labels[tipo] || tipo;
 }
+

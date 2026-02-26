@@ -10,11 +10,15 @@ vi.mock('../database/client', () => {
             juntaPayment: { findUnique: vi.fn(), create: vi.fn() },
             juntaTurn: { findFirst: vi.fn(), update: vi.fn() },
             $transaction: vi.fn((fn) => fn(prisma)),
-            cajaAccount: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
-            cajaTransaction: { create: vi.fn() }
+            cajaAccount: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn(), findMany: vi.fn() },
+            cajaTransaction: { create: vi.fn(), findMany: vi.fn() }
         }
     };
 });
+
+vi.mock('next/cache', () => ({
+    revalidatePath: vi.fn()
+}));
 
 describe('Junta Sync & Financiamiento', () => {
 
@@ -123,5 +127,41 @@ describe('Junta Sync & Financiamiento', () => {
         expect(snapshot.expected).toBe(200);
         expect(snapshot.collected).toBe(150);
         expect(snapshot.diff).toBe(50);
+    });
+
+    it('7. rebuildCajaBalances: recalculates correctly and reports diff', async () => {
+        const { rebuildCajaBalances } = await import('../app/actions/caja');
+
+        const mockCuentas = [
+            { id: 'cta-yape', tipoCuenta: 'YAPE_SEBASTIAN', saldoActual: 100 } // Incorrect saldo
+        ];
+
+        // Let's say YAPE received 300, and sent 50. True Balance = 250.
+        const mockOriginTxs = [
+            { tipo: 'EGRESO', monto: 50, cuentaOrigenId: 'cta-yape' }
+        ];
+        const mockDestTxs = [
+            { tipo: 'INGRESO', monto: 300, cuentaDestinoId: 'cta-yape' }
+        ];
+
+        (prisma.cajaAccount.findMany as any).mockResolvedValueOnce(mockCuentas);
+
+        // Sequence of findMany inside the loop
+        (prisma.cajaTransaction.findMany as any)
+            .mockResolvedValueOnce(mockOriginTxs) // First call: origin
+            .mockResolvedValueOnce(mockDestTxs);  // Second call: dest
+
+        const res = await rebuildCajaBalances();
+
+        expect(res.success).toBe(true);
+        expect(res.report?.length).toBe(1);
+        expect(res.report![0].diff).toBe(150); // 250 calculated - 100 previous = 150
+        expect(res.report![0].saldoRecalculado).toBe(250);
+
+        // Verify update was called to correct the mathematical reality
+        expect(prisma.cajaAccount.update).toHaveBeenCalledWith({
+            where: { id: 'cta-yape' },
+            data: { saldoActual: 250 }
+        });
     });
 });

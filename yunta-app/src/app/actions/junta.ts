@@ -45,6 +45,8 @@ export type JuntaState = {
         destination: string | null;
         notes: string | null;
         isCorrection: boolean;
+        clientTxId?: string | null;
+        cajaTransactionId?: string | null;
     }[];
     dateRange: {
         from: string;
@@ -66,6 +68,8 @@ export type KardexDay = {
         destination: string | null;
         notes: string | null;
         paidAt: string;
+        clientTxId?: string | null;
+        cajaTransactionId?: string | null;
     }>;
 };
 
@@ -207,8 +211,11 @@ export async function getActiveJunta() {
 
         // Flatten all payments into a single Ledger array
         const ledger = [];
+        const paymentIds: string[] = [];
+
         for (const turn of juntaDB.turns) {
             for (const p of turn.payments) {
+                paymentIds.push(p.id);
                 ledger.push({
                     id: p.id,
                     createdAt: p.createdAt.toISOString(),
@@ -219,8 +226,24 @@ export async function getActiveJunta() {
                     method: p.method,
                     destination: p.destination || CuentaDestino.EFECTIVO,
                     notes: p.notes || '',
-                    isCorrection: false
+                    isCorrection: false,
+                    clientTxId: p.clientTxId,
+                    cajaTransactionId: null as string | null
                 });
+            }
+        }
+
+        // Fetch CajaTransactions to link traceability
+        if (paymentIds.length > 0) {
+            const cajaTxs = await prisma.cajaTransaction.findMany({
+                where: { juntaPaymentId: { in: paymentIds } },
+                select: { id: true, juntaPaymentId: true }
+            });
+            const cajaTxsMap = new Map(cajaTxs.map(tx => [tx.juntaPaymentId, tx.id]));
+            for (const l of ledger) {
+                if (cajaTxsMap.has(l.id)) {
+                    l.cajaTransactionId = cajaTxsMap.get(l.id) || null;
+                }
             }
         }
 
@@ -400,9 +423,22 @@ export async function getParticipantKardex(juntaId: string, participantId: strin
         const scheduleStart = startOfDay(juntaDB.startDate);
 
         const turnByDate = new Map<string, typeof juntaDB.turns[number]>();
+        const allPaymentIds: string[] = [];
         for (const turn of juntaDB.turns) {
             const key = turn.date.toISOString().split('T')[0];
             turnByDate.set(key, turn);
+            allPaymentIds.push(...turn.payments.map(p => p.id));
+        }
+
+        const cajaTxsMap = new Map<string, string>();
+        if (allPaymentIds.length > 0) {
+            const cajaTxs = await prisma.cajaTransaction.findMany({
+                where: { juntaPaymentId: { in: allPaymentIds } },
+                select: { id: true, juntaPaymentId: true }
+            });
+            for (const tx of cajaTxs) {
+                if (tx.juntaPaymentId) cajaTxsMap.set(tx.juntaPaymentId, tx.id);
+            }
         }
 
         let cumulativeBalance = 0;
@@ -456,7 +492,9 @@ export async function getParticipantKardex(juntaId: string, participantId: strin
                     method: p.method,
                     destination: p.destination,
                     notes: p.notes,
-                    paidAt: p.paidAt.toISOString()
+                    paidAt: p.paidAt.toISOString(),
+                    clientTxId: p.clientTxId,
+                    cajaTransactionId: cajaTxsMap.get(p.id) || null
                 }))
             });
         }

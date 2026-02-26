@@ -2269,11 +2269,23 @@ function KardexModal({ report, loading, error, onClose }: { report: KardexReport
                                     {day.transactions.length > 0 ? (
                                       <div className="space-y-1">
                                         {day.transactions.map(tx => (
-                                          <div key={tx.id} className="flex items-center gap-2">
-                                            <span className="font-mono">{tx.paidAt.split('T')[0]}</span>
-                                            <span>•</span>
-                                            <span>{tx.method}</span>
-                                            {tx.destination && <span>• {tx.destination}</span>}
+                                          <div key={tx.id} className="flex flex-col mb-2 last:mb-0 border-b pb-1 last:border-0 last:pb-0">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-mono">{tx.paidAt.split('T')[0]}</span>
+                                              <span>•</span>
+                                              <span>{tx.method}</span>
+                                              {tx.destination && <span>• {tx.destination}</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-0.5 text-[10px]">
+                                              {tx.clientTxId && (
+                                                <span title={`Idempotency ID: ${tx.clientTxId}`} className="text-slate-400 font-mono">id:{tx.clientTxId.slice(0, 6)}</span>
+                                              )}
+                                              {tx.cajaTransactionId ? (
+                                                <span className="text-emerald-500 font-bold" title="Caja Integrada (Synced)">[✓ CAJA]</span>
+                                              ) : (
+                                                <span className="text-slate-400" title="Sin Asentar en Caja">[✗ ASENT]</span>
+                                              )}
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
@@ -2508,6 +2520,20 @@ function HistoryModal({ junta, onClose }: { junta: JuntaState; onClose: () => vo
                           <span>Nota: {tx.notes}</span>
                         </>
                       )}
+                      {tx.clientTxId && (
+                        <>
+                          <span>•</span>
+                          <span title={`Offline/Idempotency ID: ${tx.clientTxId}`} className="text-slate-300 font-mono text-[9px] truncate max-w-[80px]">tx:{tx.clientTxId.slice(0, 6)}</span>
+                        </>
+                      )}
+                      <>
+                        <span>•</span>
+                        {tx.cajaTransactionId ? (
+                          <span className="text-emerald-500 font-bold" title="Caja Integrada (Synced)">[✓ CAJA]</span>
+                        ) : (
+                          <span className="text-slate-400" title="Sin Asentar en Caja">[✗ ASENT]</span>
+                        )}
+                      </>
                     </div>
                   </div>
                   <div className="font-mono font-bold text-indigo-600">S/ {tx.amount.toFixed(2)}</div>
