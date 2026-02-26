@@ -133,6 +133,16 @@ const configSchema = z.object({
   participants: z.array(participantSchema).min(2, 'Mínimo 2 participantes'),
 });
 
+const transactionInputSchema = z.object({
+  targetDate: z.string(),
+  participantId: z.string(),
+  amount: z.number().min(0.01),
+  method: z.enum(['CASH', 'YAPE', 'DEBIT', 'CREDIT_BCP'] as any),
+  destination: z.nativeEnum(CuentaDestino).nullable().optional(),
+  notes: z.string().optional(),
+  clientTxId: z.string().optional()
+});
+
 type ConfigFormValues = z.infer<typeof configSchema>;
 
 // --- MAIN COMPONENT ---
@@ -1238,8 +1248,14 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
   });
 
   const handleAddTransaction = async (txData: TransactionInput) => {
+    const parsed = transactionInputSchema.safeParse(txData);
+    if (!parsed.success) {
+      alert("Validación falló: " + parsed.error.message);
+      return;
+    }
+
     const clientTxId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36);
-    const txPayload = { ...txData, clientTxId };
+    const txPayload = { ...parsed.data, clientTxId } as TransactionInput;
 
     if (!navigator.onLine) {
       await enqueuePendingPayment(txPayload);
