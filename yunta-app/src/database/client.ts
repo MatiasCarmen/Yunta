@@ -1,5 +1,5 @@
 // ============================================
-// YUNTA - Prisma Client (SQLite Version)
+// YUNTA - Prisma Client (PostgreSQL + Supabase)
 // ============================================
 
 import { PrismaClient } from '@prisma/client';
@@ -10,7 +10,7 @@ declare global {
 }
 
 /**
- * Cliente de Prisma (Standard for SQLite)
+ * Cliente de Prisma (PostgreSQL via Session Pooler)
  */
 export const prisma = global.prisma || new PrismaClient({
     log: process.env.NODE_ENV === 'development'

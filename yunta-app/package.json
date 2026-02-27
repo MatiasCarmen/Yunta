@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "prisma generate --schema=src/database/schema.prisma",
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate --schema=src/database/schema.prisma && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run"
