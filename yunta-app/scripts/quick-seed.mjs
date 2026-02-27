@@ -2,16 +2,10 @@
 import { PrismaClient } from '@prisma/client';
 import 'dotenv/config';
 
-const prisma = new PrismaClient({
-    datasources: {
-        db: {
-            url: "file:./dev.db"
-        }
-    }
-});
+const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Sembrando usuarios (Modo SQLite)...');
+    console.log('🌱 Sembrando usuarios en PostgreSQL...');
 
     const users = [
         { name: 'Matías', email: 'matias@yunta.local', role: 'EJECUTIVO' },
@@ -30,11 +24,18 @@ async function main() {
                 email: u.email,
                 role: u.role,
                 status: 'ACTIVE',
-                pinHash: '$2b$10$c.1.28V2uXNoI8UvcAzNyOGHnYP7GcR.X.1M2VUcYrMe/BJVQjrS6', // PIN Dummy
+                pinHash: '$2b$10$c.1.28V2uXNoI8UvcAzNyOGHnYP7GcR.X.1M2VUcYrMe/BJVQjrS6', // PIN: 1234
             },
         });
         console.log(`✅ ${u.name} listo.`);
     }
+
+    console.log('\n📋 Usuarios creados:');
+    console.log('  matias@yunta.local  → PIN: 1234 (EJECUTIVO)');
+    console.log('  tomas@yunta.local   → PIN: 1234 (GESTOR)');
+    console.log('  pilar@yunta.local   → PIN: 1234 (GESTOR)');
+    console.log('  ariana@yunta.local  → PIN: 1234 (BENEFICIARIO)');
+    console.log('  sthefany@yunta.local → PIN: 1234 (BENEFICIARIO)');
 }
 
 main()
