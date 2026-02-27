@@ -23,7 +23,8 @@ import {
     Package,
     Sparkles,
     Loader2,
-    LogOut
+    LogOut,
+    Shield
 } from 'lucide-react';
 
 // --- TIPOS ---
@@ -332,6 +333,7 @@ function TransactionList({ transactions }: { transactions: Transaction[] }) {
 export default function Dashboard() {
     const router = useRouter();
     const [user, setUser] = useState<string | null>(null);
+    const [userRole, setUserRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Estado de Datos Reales
@@ -344,12 +346,13 @@ export default function Dashboard() {
     });
 
     // Función para cerrar sesión
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        // Limpiar cookie httpOnly via API
+        await fetch('/api/auth/logout', { method: 'POST' });
         // Limpiar localStorage
         localStorage.removeItem('yunta-user-id');
         localStorage.removeItem('yunta-user-name');
         localStorage.removeItem('yunta-user-role');
-        
         // Redirigir al login
         router.push('/');
     };
@@ -359,7 +362,9 @@ export default function Dashboard() {
         if (typeof window !== 'undefined') {
             // Intentamos obtener perfil seleccionado, si no, uno por defecto
             const storedUser = localStorage.getItem('yunta-user-name');
+            const storedRole = localStorage.getItem('yunta-user-role');
             setUser(storedUser || 'Familia');
+            setUserRole(storedRole);
         }
 
         // 2. Cargar Datos de API
@@ -372,7 +377,7 @@ export default function Dashboard() {
                     setLoading(false);
                     return;
                 }
-                
+
                 const res = await fetch(`/api/transactions?userId=${userId}&limit=50`);
                 const data = await res.json();
 
@@ -446,15 +451,25 @@ export default function Dashboard() {
                             Nuevo Movimiento
                         </Link>
                     </Button>
-                    <Button asChild variant="outline" className="flex-1 sm:flex-none h-11 border-primary/20 hover:bg-primary/5 text-primary">
-                        <Link href="/dashboard/junta">
-                            <Users className="mr-2 h-5 w-5" />
-                            Ver Junta
-                        </Link>
-                    </Button>
-                    <Button 
+                    {(userRole === 'EJECUTIVO' || userRole === 'GESTOR') && (
+                        <Button asChild variant="outline" className="flex-1 sm:flex-none h-11 border-primary/20 hover:bg-primary/5 text-primary">
+                            <Link href="/dashboard/junta">
+                                <Users className="mr-2 h-5 w-5" />
+                                Ver Junta
+                            </Link>
+                        </Button>
+                    )}
+                    {userRole === 'EJECUTIVO' && (
+                        <Button asChild variant="outline" className="flex-1 sm:flex-none h-11 border-amber-200 hover:bg-amber-50 text-amber-700">
+                            <Link href="/dashboard/admin/users">
+                                <Shield className="mr-2 h-5 w-5" />
+                                Admin
+                            </Link>
+                        </Button>
+                    )}
+                    <Button
                         onClick={handleLogout}
-                        variant="outline" 
+                        variant="outline"
                         className="h-11 px-3 border-red-200 hover:bg-red-50 hover:text-red-600 text-red-500"
                         title="Cerrar Sesión"
                     >

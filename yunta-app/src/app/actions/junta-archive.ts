@@ -3,6 +3,7 @@
 import { prisma } from '@/database/client';
 import { revalidatePath } from 'next/cache';
 import { startOfDay, differenceInCalendarDays } from 'date-fns';
+import { requireRole } from '@/lib/auth';
 
 // ============================================
 // TIPOS PARA ARCHIVO DE JUNTAS
@@ -65,6 +66,7 @@ export type JuntaFinalReport = {
  */
 export async function archiveJunta(juntaId: string, reason?: string) {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         // 1. Obtener junta con todas sus relaciones
         const junta = await prisma.junta.findUnique({
             where: { id: juntaId },
@@ -227,6 +229,7 @@ export async function archiveJunta(juntaId: string, reason?: string) {
  */
 export async function getArchivedJuntas(): Promise<ArchivedJuntaSummary[]> {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         const archived = await prisma.junta.findMany({
             where: {
                 status: { in: ['ARCHIVED', 'COMPLETED', 'CANCELLED'] }
@@ -278,6 +281,7 @@ export async function getArchivedJuntas(): Promise<ArchivedJuntaSummary[]> {
  */
 export async function getJuntaArchiveReport(juntaId: string): Promise<JuntaFinalReport | null> {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         const junta = await prisma.junta.findUnique({
             where: { id: juntaId }
         });
@@ -298,6 +302,7 @@ export async function getJuntaArchiveReport(juntaId: string): Promise<JuntaFinal
  */
 export async function duplicateJunta(juntaId: string, newName: string, newStartDate: Date) {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         // Obtener junta original
         const originalJunta = await prisma.junta.findUnique({
             where: { id: juntaId },

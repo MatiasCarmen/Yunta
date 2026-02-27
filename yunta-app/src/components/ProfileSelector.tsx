@@ -86,8 +86,8 @@ export default function ProfileSelector({ users }: ProfileSelectorProps) {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                // Login exitoso - redirigir al dashboard
-                // Guardar sesión en localStorage para persistencia básica
+                // Login exitoso — cookie httpOnly ya fue seteada por el servidor
+                // localStorage solo para UI rendering (no para seguridad)
                 localStorage.setItem('yunta-user-id', selectedUser.id);
                 localStorage.setItem('yunta-user-name', selectedUser.name);
                 localStorage.setItem('yunta-user-role', selectedUser.role);
@@ -128,15 +128,15 @@ export default function ProfileSelector({ users }: ProfileSelectorProps) {
                                 onClick={() => handleUserSelect(user)}
                                 className="flex items-center justify-center gap-2 h-14 px-6 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-medium rounded-lg transition-colors duration-200 border border-emerald-200 hover:border-emerald-300"
                             >
-                                <svg 
-                                    xmlns="http://www.w3.org/2000/svg" 
-                                    width="20" 
-                                    height="20" 
-                                    viewBox="0 0 24 24" 
-                                    fill="none" 
-                                    stroke="currentColor" 
-                                    strokeWidth="2" 
-                                    strokeLinecap="round" 
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
                                     strokeLinejoin="round"
                                 >
                                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>

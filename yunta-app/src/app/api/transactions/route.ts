@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { createTransaction, getTransactions } from '@/services/transactions';
 import { ExpenseCategory } from '@prisma/client';
 import { prisma } from '@/database/client';
+import { getCurrentUser } from '@/lib/auth';
 import { z } from 'zod';
 
 // ============================================
@@ -101,10 +102,11 @@ export async function POST(request: Request) {
             );
         }
 
-        // 4. Resolve userId server-side
+        // 4. Resolve userId — prefer session, fallback to default
         let userId: string;
         try {
-            userId = await resolveDefaultUserId();
+            const sessionUser = await getCurrentUser();
+            userId = sessionUser ? sessionUser.id : await resolveDefaultUserId();
         } catch {
             return NextResponse.json(
                 { success: false, message: 'No existe usuario admin. Ejecuta seed o crea un usuario.' },

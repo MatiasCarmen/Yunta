@@ -4,6 +4,7 @@ import { prisma } from '@/database/client';
 import { revalidatePath } from 'next/cache';
 import { Prisma, $Enums, CuentaDestino } from '@prisma/client';
 import { addDays, differenceInCalendarDays, startOfDay, startOfToday } from 'date-fns';
+import { requireRole } from '@/lib/auth';
 
 // --- TYPES TO MATCH FRONTEND ---
 
@@ -109,6 +110,7 @@ type CreateJuntaInput = {
 
 export async function createJunta(data: CreateJuntaInput) {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         console.log("Creating Junta...", data);
 
         // 1. Get Admin (Assuming first executive found or fallback)
@@ -179,6 +181,7 @@ export async function createJunta(data: CreateJuntaInput) {
 
 export async function getActiveJunta() {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         const juntaDB = await prisma.junta.findFirst({
             where: { status: 'ACTIVE' },
             include: {
@@ -271,6 +274,7 @@ export async function getActiveJunta() {
 
 export async function recordPayment(juntaId: string, txData: TransactionInput) {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         if (txData.clientTxId) {
             const existing = await prisma.juntaPayment.findUnique({
                 where: { clientTxId: txData.clientTxId }
@@ -349,6 +353,7 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
 
 export async function closeDay(juntaId: string, date: string) {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         const targetDate = new Date(date);
         const turn = await prisma.juntaTurn.findFirst({
             where: { juntaId, date: targetDate },
@@ -408,6 +413,7 @@ export async function closeDay(juntaId: string, date: string) {
 
 export async function getParticipantKardex(juntaId: string, participantId: string): Promise<KardexReport | null> {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         const juntaDB = await prisma.junta.findFirst({
             where: { id: juntaId, status: 'ACTIVE' },
             include: {
@@ -482,7 +488,7 @@ export async function getParticipantKardex(juntaId: string, participantId: strin
                         isFromSnapshot = true;
                     }
                 } catch (e) {
-                   console.error("Failed parsing snapshot", e);
+                    console.error("Failed parsing snapshot", e);
                 }
             }
 
@@ -554,6 +560,7 @@ export async function getParticipantKardex(juntaId: string, participantId: strin
 
 export async function rescheduleTurn(juntaId: string, date: string, newBeneficiaryId: string) {
     try {
+        await requireRole(['EJECUTIVO', 'GESTOR']);
         const targetDate = new Date(date);
         const turn = await prisma.juntaTurn.findFirst({
             where: { juntaId, date: targetDate }
