@@ -24,7 +24,7 @@ export interface CreateTransactionInput {
     notes?: string;
     date?: Date;
     receipt?: string;
-    userId: string;
+    userId?: string; // Optional — server resolves default user if omitted
 }
 
 /**

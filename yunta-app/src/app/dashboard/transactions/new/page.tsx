@@ -56,18 +56,14 @@ export default function NewTransactionPage() {
         setLoading(true);
 
         try {
-            // Preparar payload
-            // Nota: userId temporalmente hardcodeado o enviado si la API lo requiere.
-            // Asumimos que la API tomas el userId del contexto o espera uno.
-            // Si la API falla, agregaremos un selector de usuario.
             const payload = {
-                ...formData,
                 amount: Number(formData.amount),
                 type,
-                // Si es INGRESO, category es opcional o null
+                method: formData.method,
+                description: formData.description,
                 category: type === 'IN' ? undefined : formData.category,
-                // TODO: Obtener userId real. Por ahora usamos un ID dummy o dejamos que la API falle si requiere auth.
-                // Idealmente, este formulario debería estar en un contexto de usuario autenticado.
+                notes: formData.notes || undefined,
+                date: formData.date,
             };
 
             const res = await fetch('/api/transactions', {
@@ -76,9 +72,10 @@ export default function NewTransactionPage() {
                 body: JSON.stringify(payload)
             });
 
+            const data = await res.json();
+
             if (!res.ok) {
-                const errorData = await res.json();
-                throw new Error(errorData.error || 'Error al guardar');
+                throw new Error(data.message || 'Error al guardar');
             }
 
             // Éxito
@@ -86,7 +83,8 @@ export default function NewTransactionPage() {
             router.refresh();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar la transacción. Asegúrate de tener usuarios creados.');
+            const msg = error instanceof Error ? error.message : 'Error desconocido al guardar la transacción.';
+            alert(msg);
         } finally {
             setLoading(false);
         }
@@ -118,8 +116,8 @@ export default function NewTransactionPage() {
                                 type="button"
                                 onClick={() => setType('IN')}
                                 className={`py-2 px-4 rounded-md text-sm font-medium transition-all ${type === 'IN'
-                                        ? 'bg-background text-green-600 shadow-sm ring-1 ring-black/5'
-                                        : 'text-muted-foreground hover:bg-background/50'
+                                    ? 'bg-background text-green-600 shadow-sm ring-1 ring-black/5'
+                                    : 'text-muted-foreground hover:bg-background/50'
                                     }`}
                             >
                                 Ingreso (+)
@@ -128,8 +126,8 @@ export default function NewTransactionPage() {
                                 type="button"
                                 onClick={() => setType('OUT')}
                                 className={`py-2 px-4 rounded-md text-sm font-medium transition-all ${type === 'OUT'
-                                        ? 'bg-background text-red-600 shadow-sm ring-1 ring-black/5'
-                                        : 'text-muted-foreground hover:bg-background/50'
+                                    ? 'bg-background text-red-600 shadow-sm ring-1 ring-black/5'
+                                    : 'text-muted-foreground hover:bg-background/50'
                                     }`}
                             >
                                 Gasto (-)
