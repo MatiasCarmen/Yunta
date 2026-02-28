@@ -1860,59 +1860,84 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
 }
 
 function ParticipantsSummaryCard({ junta, onViewDetail }: { junta: JuntaState; onViewDetail: (id: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Auto-open on desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) setIsOpen(true);
+      else setIsOpen(false);
+    };
+    handleResize(); // Init
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Users className="w-4 h-4 text-slate-500" /> Resumen por Participante
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-          {junta.participants.map(p => {
-            const myTxs = junta.ledger.filter(t => t.participantId === p.id);
-            const totalContributed = myTxs.reduce((acc, t) => acc + t.amount, 0);
+    <Card className="overflow-hidden">
+      <div
+        className="bg-white p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 border-b border-slate-100"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="font-bold text-slate-800 flex items-center gap-2">
+          <Users className="h-5 w-5 text-indigo-500" />
+          <span>Resumen por Participante</span>
+        </div>
+        <div className="lg:hidden text-slate-400">
+          {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+        </div>
+      </div>
 
-            const daysPassed = junta.schedule.filter(d => isBefore(parseISO(d.date), addDays(startOfToday(), 1))).length;
-            const debtToDate = p.dailyCommitment * daysPassed;
-            const balance = totalContributed - debtToDate;
+      {isOpen && (
+        <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
+          <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+            {junta.participants.map(p => {
+              const myTxs = junta.ledger.filter(t => t.participantId === p.id);
+              const totalContributed = myTxs.reduce((acc, t) => acc + t.amount, 0);
 
-            const receiveDay = junta.schedule.find(d => d.beneficiaryId === p.id);
+              const daysPassed = junta.schedule.filter(d => isBefore(parseISO(d.date), addDays(startOfToday(), 1))).length;
+              const debtToDate = p.dailyCommitment * daysPassed;
+              const balance = totalContributed - debtToDate;
 
-            return (
-              <div key={p.id} className="p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="font-bold text-slate-800">{p.name}</span>
-                  <Badge variant={balance < 0 ? 'destructive' : 'default'}>
-                    {balance < 0 ? 'Debiendo' : 'Al día'}
-                  </Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mt-2">
-                  <div>
-                    <span className="block text-[10px] uppercase">Aportado</span>
-                    <span className="font-mono font-medium text-slate-700">S/ {totalContributed.toFixed(2)}</span>
+              const receiveDay = junta.schedule.find(d => d.beneficiaryId === p.id);
+
+              return (
+                <div key={p.id} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-bold text-slate-800">{p.name}</span>
+                    <Badge variant={balance < 0 ? 'destructive' : 'default'}>
+                      {balance < 0 ? 'Debiendo' : 'Al día'}
+                    </Badge>
                   </div>
-                  <div>
-                    <span className="block text-[10px] uppercase">Diferencia</span>
-                    <span className={cn("font-mono font-medium", balance < 0 ? "text-red-500" : "text-green-600")}>
-                      {balance === 0 ? '-' : `${balance > 0 ? '+' : ''}${balance.toFixed(2)}`}
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mt-2">
+                    <div>
+                      <span className="block text-[10px] uppercase">Aportado</span>
+                      <span className="font-mono font-medium text-slate-700">S/ {totalContributed.toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] uppercase">Diferencia</span>
+                      <span className={cn("font-mono font-medium", balance < 0 ? "text-red-500" : "text-green-600")}>
+                        {Number.isNaN(balance) ? '0.00' : (balance === 0 ? '-' : `${balance > 0 ? '+' : ''}${balance.toFixed(2)}`)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] flex justify-between text-slate-400">
+                    <span className={cn("inline-block truncate max-w-[120px]", !receiveDay && "text-amber-500 font-medium")}>
+                      {receiveDay ? `Turno: ${format(parseISO(receiveDay.date), 'dd MMM')}` : 'Sin turno asignado'}
+                    </span>
+                    <span
+                      className="cursor-pointer hover:text-indigo-600 flex items-center gap-1"
+                      onClick={() => onViewDetail(p.id)}
+                    >
+                      <Eye className="w-3 h-3" /> Ver detalle
                     </span>
                   </div>
                 </div>
-                <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] flex justify-between text-slate-400">
-                  <span>Turno: {receiveDay ? format(parseISO(receiveDay.date), 'dd MMM') : '?'}</span>
-                  <span
-                    className="cursor-pointer hover:text-indigo-600 flex items-center gap-1"
-                    onClick={() => onViewDetail(p.id)}
-                  >
-                    <Eye className="w-3 h-3" /> Ver detalle
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
+              );
+            })}
+          </div>
+        </CardContent>
+      )}
     </Card>
   );
 }
