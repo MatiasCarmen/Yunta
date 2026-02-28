@@ -36,6 +36,10 @@ interface DashboardHeaderProps {
         user?: { name: string };
     }>;
     onExportCSV: () => void;
+    showReportsDrawer: boolean;
+    setShowReportsDrawer: (show: boolean) => void;
+    showOptionsDrawer: boolean;
+    setShowOptionsDrawer: (show: boolean) => void;
 }
 
 type PeriodOption = 'Este mes' | 'Esta semana' | 'Todo';
@@ -48,11 +52,13 @@ export default function DashboardHeader({
     onSearchChange,
     transactions,
     onExportCSV,
+    showReportsDrawer,
+    setShowReportsDrawer,
+    showOptionsDrawer,
+    setShowOptionsDrawer,
 }: DashboardHeaderProps) {
     const [period, setPeriod] = useState<PeriodOption>('Este mes');
     const [showPeriodMenu, setShowPeriodMenu] = useState(false);
-    const [showReportsDrawer, setShowReportsDrawer] = useState(false);
-    const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
 
     const periodOptions: PeriodOption[] = ['Este mes', 'Esta semana', 'Todo'];
 
@@ -84,7 +90,7 @@ export default function DashboardHeader({
                 </div>
 
                 {/* Derecha: Acciones y filtros */}
-                <div className="flex flex-wrap items-center gap-2 order-2 lg:order-3">
+                <div className="hidden lg:flex flex-wrap items-center gap-2 order-2 lg:order-3">
                     {/* Filtro de periodo */}
                     <div className="relative">
                         <Button

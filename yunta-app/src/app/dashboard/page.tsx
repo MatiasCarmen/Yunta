@@ -7,6 +7,8 @@ import { exportTransactionsToCSV } from '@/lib/export';
 
 // Dashboard components
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import MobileBottomNav from '@/components/navigation/MobileBottomNav';
+import MobileMoreDrawer from '@/components/navigation/MobileMoreDrawer';
 import StatsRow from '@/components/dashboard/StatsRow';
 import CashflowChartCard from '@/components/dashboard/CashflowChartCard';
 import RecentTransactionsCard from '@/components/dashboard/RecentTransactionsCard';
@@ -36,6 +38,11 @@ export default function Dashboard() {
     const [userRole, setUserRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    
+    // Mobile navigation state
+    const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+    const [showReportsDrawer, setShowReportsDrawer] = useState(false);
+    const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
 
     // Estado de Datos Reales
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -155,7 +162,7 @@ export default function Dashboard() {
     }
 
     return (
-        <div className="animate-in fade-in duration-500 max-w-[1400px] mx-auto p-4 md:p-6 space-y-5">
+        <div className="animate-in fade-in duration-500 max-w-[1400px] mx-auto p-4 md:p-6 space-y-5 pb-24 lg:pb-6">
             {/* ─── Topbar ─── */}
             <DashboardHeader
                 transactions={transactions}
@@ -165,6 +172,10 @@ export default function Dashboard() {
                 onLogout={handleLogout}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
+                showReportsDrawer={showReportsDrawer}
+                setShowReportsDrawer={setShowReportsDrawer}
+                showOptionsDrawer={showOptionsDrawer}
+                setShowOptionsDrawer={setShowOptionsDrawer}
             />
 
             {/* ─── Stats Row (4 cards) ─── */}
@@ -186,6 +197,19 @@ export default function Dashboard() {
                 <PlaceholderBudgetCard transactions={filteredTransactions} />
                 <PlaceholderGoalsCard />
             </div>
+
+            {/* ─── Mobile Bottom Navigation ─── */}
+            <MobileBottomNav onMoreClick={() => setShowMoreDrawer(true)} />
+
+            {/* ─── Mobile More Drawer ─── */}
+            <MobileMoreDrawer
+                isOpen={showMoreDrawer}
+                onClose={() => setShowMoreDrawer(false)}
+                userRole={userRole}
+                onReportsClick={() => setShowReportsDrawer(true)}
+                onOptionsClick={() => setShowOptionsDrawer(true)}
+                onLogout={handleLogout}
+            />
         </div>
     );
 }
