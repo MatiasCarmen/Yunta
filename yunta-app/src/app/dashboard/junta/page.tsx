@@ -53,6 +53,8 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { NotebookModal } from '@/components/junta/NotebookModal';
 import FloatingCalculator from '@/components/junta/FloatingCalculator';
+import MobileBottomNav from '@/components/navigation/MobileBottomNav';
+import MobileJuntaMoreDrawer from '@/components/navigation/MobileJuntaMoreDrawer';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -159,6 +161,9 @@ export default function JuntaPage() {
 
   // Estados para juntas archivadas
   const [archivedJuntas, setArchivedJuntas] = useState<ArchivedJuntaSummary[]>([]);
+  
+  // Estado para drawer móvil
+  const [showMoreDrawer, setShowMoreDrawer] = useState(false);
 
 
   // Estados para diálogos personalizados
@@ -440,11 +445,22 @@ export default function JuntaPage() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (response.ok) {
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
   return (
     <>
       <LoadingScreen isLoading={loadingState.isLoading} message={loadingState.message} />
 
-      <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-2 md:p-6">
+      <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-2 md:p-6 pb-24 lg:pb-6">
         <div className="max-w-7xl mx-auto space-y-6">
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-40">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -463,7 +479,8 @@ export default function JuntaPage() {
                 </h1>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
+            {/* Botones de acción: ocultos en mobile, visibles en desktop */}
+            <div className="hidden lg:flex items-center gap-2 flex-wrap">
               {view === 'DASHBOARD' && (
                 <>
                   {/* Botón de Caja */}
@@ -893,6 +910,35 @@ export default function JuntaPage() {
             </div>
           )}
         </div>
+
+        {/* Mobile Navigation */}
+        <MobileBottomNav onMoreClick={() => setShowMoreDrawer(true)} />
+        <MobileJuntaMoreDrawer
+          isOpen={showMoreDrawer}
+          onClose={() => setShowMoreDrawer(false)}
+          junta={junta}
+          onCajaClick={() => {
+            if (junta) {
+              window.location.href = `/dashboard/junta/caja?id=${junta.id}`;
+            }
+          }}
+          onAlertasClick={handleOpenProblemsModal}
+          onArchivarClick={handleArchiveJunta}
+          onHistorialClick={handleViewArchived}
+          onReiniciarClick={() => {
+            setConfirmDialog({
+              isOpen: true,
+              title: '🔄 Reiniciar Sistema',
+              message: '¿Estás seguro de que deseas reiniciar? Se perderá la junta actual sin archivar.',
+              onConfirm: () => {
+                setConfirmDialog(null);
+                setJunta(null);
+                setView('CONFIG');
+              }
+            });
+          }}
+          onLogout={handleLogout}
+        />
       </div>
     </>
   );
