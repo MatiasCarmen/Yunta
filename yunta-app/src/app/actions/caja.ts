@@ -3,6 +3,7 @@
 import { prisma } from "@/database";
 import { CuentaDestino, TipoMovimientoCaja, ExpenseCategory } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { requireRole } from "@/lib/auth";
 
 // ============================================
 // TIPOS
@@ -41,6 +42,7 @@ export type MovimientoCaja = {
  */
 export async function getCajaActual(): Promise<CuentaCaja[]> {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     const cuentas = await prisma.cajaAccount.findMany({
       orderBy: { tipoCuenta: "asc" }
     });
@@ -67,6 +69,7 @@ export async function getCajaHistorial(
   limit = 50
 ): Promise<MovimientoCaja[]> {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     const movimientos = await prisma.cajaTransaction.findMany({
       include: {
         cuentaOrigen: true,
@@ -108,6 +111,7 @@ export async function moverDinero(
   notas?: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     // Validar que las cuentas existan y tengan saldo suficiente
     const cuentaOrigen = await prisma.cajaAccount.findUnique({
       where: { id: cuentaOrigenId }
@@ -169,6 +173,7 @@ export async function registrarGasto(
   notas?: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     // Validar que la cuenta exista y tenga saldo suficiente
     const cuenta = await prisma.cajaAccount.findUnique({
       where: { id: cuentaId }
@@ -224,6 +229,7 @@ export async function registrarIngreso(
   notas?: string
 ): Promise<{ success: boolean; message: string }> {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     await prisma.$transaction(async (tx) => {
       // Agregar a la cuenta
       await tx.cajaAccount.update({

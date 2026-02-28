@@ -308,7 +308,7 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
                 }
             });
 
-            if (txData.destination && txData.destination !== 'NONE' as any) {
+            if (txData.destination) {
                 // Ensure CajaAccount exists for the selected destination
                 const cuenta = await tx.cajaAccount.upsert({
                     where: { tipoCuenta: txData.destination },
@@ -320,18 +320,16 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
                     }
                 });
 
-                if (cuenta) {
-                    await tx.cajaTransaction.create({
-                        data: {
-                            tipo: 'INGRESO',
-                            monto: new Prisma.Decimal(txData.amount),
-                            descripcion: `Cobro de Junta (Turno ${turn.turnNumber})`,
-                            juntaPaymentId: payment.id,
-                            cuentaDestinoId: cuenta.id,
-                            fecha: new Date()
-                        }
-                    });
-                }
+                await tx.cajaTransaction.create({
+                    data: {
+                        tipo: 'INGRESO',
+                        monto: new Prisma.Decimal(txData.amount),
+                        descripcion: `Cobro de Junta (Turno ${turn.turnNumber})`,
+                        juntaPaymentId: payment.id,
+                        cuentaDestinoId: cuenta.id,
+                        fecha: new Date()
+                    }
+                });
             }
         });
 
