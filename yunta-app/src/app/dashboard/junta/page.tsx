@@ -1439,9 +1439,9 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline ml-2">Cuaderno</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)} className="h-8 px-2 sm:px-3">
-              <History className="w-4 h-4" />
-              <span className="hidden sm:inline ml-2">Historial</span>
+            <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)} className="h-8 px-2 sm:px-3 text-amber-700 hover:bg-amber-50">
+              <FolderArchive className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Juntas Archivadas</span>
             </Button>
           </div>
         </div>

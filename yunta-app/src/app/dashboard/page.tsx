@@ -63,117 +63,11 @@ const getCategoryIcon = (cat?: string) => {
     return <ShoppingCart className="h-4 w-4" />;
 };
 
-// --- COMPONENTE: ASESOR IA GEMINI ---
-function AIAdvisor({ summary, transactions }: { summary: SummaryData, transactions: Transaction[] }) {
-    const [advice, setAdvice] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-
-    const getFinancialAdvice = async () => {
-        setLoading(true);
-        try {
-            // Preparamos los datos para que sean legibles por la IA (limitamos transacciones para no saturar prompt)
-            const recentTx = transactions.slice(0, 10).map(t => ({
-                desc: t.description,
-                amount: t.amount,
-                type: t.type,
-                cat: t.category
-            }));
-
-            const prompt = `
-        Actúa como un asesor financiero personal experto y amigable (tono "bro" pero profesional).
-        Analiza estos datos de mi familia hoy:
-        - Balance: ${JSON.stringify(summary)}
-        - Últimos movimientos: ${JSON.stringify(recentTx)}
-        
-        Dame 3 puntos clave con emojis:
-        1. Análisis rápido (¿bien o mal?).
-        2. Alerta de gasto hormiga o innecesario si ves uno.
-        3. Consejo breve para la "Junta" (ahorro).
-        
-        Máximo 3 párrafos cortos.
-      `;
-
-            // API Key desde variable de entorno o placeholder
-            const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
-
-            if (!apiKey) {
-                setAdvice("¡Ups! Necesito una API Key de Gemini para pensar. Configura NEXT_PUBLIC_GEMINI_API_KEY en tu .env");
-                return;
-            }
-
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-                }
-            );
-
-            const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (text) {
-                setAdvice(text);
-            } else {
-                setAdvice("Lo siento, bro. Mis neuronas están descansando. Intenta luego.");
-            }
-        } catch (error) {
-            console.error("Error IA:", error);
-            setAdvice("Error de conexión con el cerebro. Revisa tu internet.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <Card className="col-span-full bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-100 shadow-sm">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-2 gap-4">
-                <div className="space-y-1">
-                    <CardTitle className="flex items-center gap-2 text-indigo-700 text-xl">
-                        <Sparkles className="h-5 w-5 text-indigo-500" />
-                        Asesor Financiero IA
-                    </CardTitle>
-                    <CardDescription className="text-indigo-600/80">
-                        Analiza tus finanzas en tiempo real con Inteligencia Artificial.
-                    </CardDescription>
-                </div>
-                <Button
-                    onClick={getFinancialAdvice}
-                    disabled={loading}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all hover:scale-105 w-full sm:w-auto"
-                >
-                    {loading ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Pensando...</>
-                    ) : (
-                        <><Sparkles className="h-4 w-4 mr-2" /> ✨ Analizar</>
-                    )}
-                </Button>
-            </CardHeader>
-
-            {advice && (
-                <CardContent className="animate-in fade-in slide-in-from-top-2 duration-500">
-                    <div className="p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-indigo-100 text-indigo-900 text-sm leading-relaxed whitespace-pre-line shadow-inner">
-                        {advice}
-                    </div>
-                </CardContent>
-            )}
-        </Card>
-    );
-}
-
 // --- SUB-COMPONENTES CONECTADOS ---
 
 function SummaryCards({ data }: { data: SummaryData }) {
-    // Calculamos la Junta (Asumiendo que usamos la regla 300 semanal)
-    // En el futuro esto vendrá de la DB real de 'Meetings' o 'Goals'
-    const juntaGoal = 300;
-    // Simulamos progreso de junta basado en un % del balance o un valor fijo por ahora
-    const juntaCurrent = data.junta || 0;
-    const isGoalMet = juntaCurrent >= juntaGoal;
-
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
             <Card className="shadow-sm border-l-4 border-l-blue-500">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Balance Total</CardTitle>
@@ -204,19 +98,6 @@ function SummaryCards({ data }: { data: SummaryData }) {
                 <CardContent>
                     <div className="text-2xl font-bold text-red-600">S/ {data.totalExpenses?.toFixed(2) || '0.00'}</div>
                     <p className="text-xs text-muted-foreground mt-1">Este periodo</p>
-                </CardContent>
-            </Card>
-
-            <Card className="shadow-sm border-l-4 border-l-purple-500 bg-purple-50/50">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Junta Semanal</CardTitle>
-                    <CreditCard className="h-4 w-4 text-purple-500" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold text-purple-700">S/ {juntaCurrent.toFixed(2)}</div>
-                    <p className="text-xs text-purple-600/80 mt-1">
-                        Meta: S/ {juntaGoal} {isGoalMet ? '(✅)' : '(⏳)'}
-                    </p>
                 </CardContent>
             </Card>
         </div>
@@ -478,8 +359,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* IA Advisor */}
-            <AIAdvisor summary={summary} transactions={transactions} />
+
 
             {/* Tarjetas de Resumen */}
             <SummaryCards data={summary} />
