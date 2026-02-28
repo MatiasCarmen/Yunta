@@ -1424,23 +1424,24 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
       {/* LEFT: SERPENTINA AGENDA */}
       <div className="lg:col-span-8 space-y-6">
 
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-slate-800">Agenda de la Junta</h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-slate-800">Agenda de la Junta</h2>
 
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-1 sm:gap-2 items-center">
             {(offlineStats.pending > 0 || offlineStats.failed > 0) && (
-              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
-                {offlineStats.pending > 0 && <span className="text-amber-600">⏳ {offlineStats.pending} Pendientes</span>}
-                {offlineStats.failed > 0 && <span className="text-red-500">❌ {offlineStats.failed} Fallidos</span>}
-                <button onClick={handleRetrySync} className="text-indigo-600 hover:underline ml-2">Reintentar</button>
-                {offlineStats.failed > 0 && <button onClick={handleDiscardFailed} className="text-slate-500 hover:underline ml-2 text-xs">Descartar</button>}
+              <div className="flex items-center gap-2 bg-slate-100 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                {offlineStats.pending > 0 && <span className="text-amber-600">⏳ {offlineStats.pending}</span>}
+                {offlineStats.failed > 0 && <span className="text-red-500">❌ {offlineStats.failed}</span>}
+                <button onClick={handleRetrySync} className="text-indigo-600 hover:underline ml-1">Reintentar</button>
               </div>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setShowNotebook(true)}>
-              <BookOpen className="w-4 h-4 mr-2" /> Cuaderno
+            <Button variant="ghost" size="sm" onClick={() => setShowNotebook(true)} className="h-8 px-2 sm:px-3">
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Cuaderno</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)}>
-              <History className="w-4 h-4 mr-2" /> Historial Global
+            <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)} className="h-8 px-2 sm:px-3">
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Historial</span>
             </Button>
           </div>
         </div>
@@ -1758,17 +1759,17 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
       {isExpanded && (
         <div className="p-4 md:p-6 animate-in slide-in-from-top-2 duration-300">
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 rounded-lg bg-slate-50 border border-slate-100">
-              <span className="text-xs text-slate-400 font-bold uppercase">Meta del Día</span>
-              <div className="text-2xl font-mono font-bold text-slate-700">S/ {dailyTotalExpected.toFixed(2)}</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+            <div className="p-2 sm:p-4 rounded-lg bg-slate-50 border border-slate-100">
+              <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase">Meta</span>
+              <div className="text-base sm:text-2xl font-mono font-bold text-slate-700">S/ {dailyTotalExpected.toFixed(0)}</div>
             </div>
-            <div className="p-4 rounded-lg bg-slate-50 border border-slate-100">
-              <span className="text-xs text-slate-400 font-bold uppercase">Faltante</span>
-              <div className="text-2xl font-mono font-bold text-amber-600">S/ {Math.max(0, dailyTotalExpected - collected).toFixed(2)}</div>
+            <div className="p-2 sm:p-4 rounded-lg bg-slate-50 border border-slate-100">
+              <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase">Faltante</span>
+              <div className="text-base sm:text-2xl font-mono font-bold text-amber-600">S/ {Math.max(0, dailyTotalExpected - collected).toFixed(0)}</div>
             </div>
-            <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-100">
-              <span className="text-xs text-indigo-400 font-bold uppercase">Beneficiario del Pozo</span>
+            <div className="p-2 sm:p-4 rounded-lg bg-indigo-50 border border-indigo-100">
+              <span className="text-[10px] sm:text-xs text-indigo-400 font-bold uppercase">Beneficiario</span>
               {day.isClosed ? (
                 <div className="flex items-center gap-2 text-slate-500">
                   <Lock className="w-4 h-4" /> {beneficiary?.name}
@@ -1787,14 +1788,14 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
           </div>
 
           {/* Participant Table */}
-          <div className="border rounded-lg overflow-hidden mb-6">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+          <div className="border rounded-lg overflow-x-auto mb-4 sm:mb-6">
+            <table className="w-full text-xs sm:text-sm min-w-[360px]">
+              <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] sm:text-xs">
                 <tr>
-                  <th className="px-4 py-3 text-left">Participante</th>
-                  <th className="px-4 py-3 text-center">Estado</th>
-                  <th className="px-4 py-3 text-right">Aportado</th>
-                  <th className="px-4 py-3 text-right">Acción</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Nombre</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Estado</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Aporte</th>
+                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1805,25 +1806,25 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 font-medium">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium">
                         {p.name}
-                        {p.id === day.beneficiaryId && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200">RECIBE</span>}
+                        {p.id === day.beneficiaryId && <span className="ml-1 text-[9px] sm:text-[10px] bg-indigo-100 text-indigo-700 px-1 py-0.5 rounded border border-indigo-200">RECIBE</span>}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                         <StatusBadge status={pStatus} />
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-slate-600">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-mono text-slate-600">
                         <div className="flex flex-col items-end">
-                          <span>S/ {pPaid.toFixed(2)}</span>
+                          <span>S/ {pPaid.toFixed(0)}</span>
                           {pPaid < p.dailyCommitment && (
-                            <span className="text-[10px] text-red-400">Faltan S/ {(p.dailyCommitment - pPaid).toFixed(2)}</span>
+                            <span className="text-[9px] sm:text-[10px] text-red-400">-S/{(p.dailyCommitment - pPaid).toFixed(0)}</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-right">
                         {!day.isClosed && pStatus !== 'COMPLETO' && (
-                          <Button size="sm" className="h-7 text-xs" onClick={() => onShowPayModal(p.id)}>
-                            <Plus className="w-3 h-3 mr-1" /> Pagar
+                          <Button size="sm" className="h-6 sm:h-7 text-[10px] sm:text-xs px-2" onClick={() => onShowPayModal(p.id)}>
+                            <Plus className="w-3 h-3 mr-0.5" /> Pagar
                           </Button>
                         )}
                         {pStatus === 'COMPLETO' && <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />}
@@ -1836,10 +1837,10 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
           </div>
 
           {/* Actions */}
-          <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
-            <div className="text-xs text-slate-500 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              {day.isClosed ? "Día cerrado administrativamente." : "Día abierto para registros."}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-slate-50 p-2 sm:p-3 rounded-lg border border-slate-100">
+            <div className="text-[10px] sm:text-xs text-slate-500 flex items-center gap-1 sm:gap-2">
+              <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+              {day.isClosed ? "Día cerrado." : "Día abierto."}
             </div>
             {!day.isClosed && (
               <Button variant="destructive" size="sm" onClick={() => onCloseDay(day.date)}>
