@@ -16,7 +16,7 @@ import {
   Users, Calendar, History, CheckCircle2, ChevronLeft,
   Banknote, Plus, Trash2,
   Wand2, ArrowRight, Loader2, Wallet, ChevronDown, ChevronUp,
-  Calculator, Clock, Eye, Lock, Unlock, Download, FileText, AlertTriangle, Settings, X, ArrowLeft, RotateCcw, Archive, FolderArchive, BookOpen
+  Clock, Eye, Lock, Unlock, Download, FileText, AlertTriangle, Settings, X, ArrowLeft, RotateCcw, Archive, FolderArchive, BookOpen
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, CartesianGrid, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts';
 
@@ -52,6 +52,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/loading-screen';
 import { NotebookModal } from '@/components/junta/NotebookModal';
+import FloatingCalculator from '@/components/junta/FloatingCalculator';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -445,24 +446,24 @@ export default function JuntaPage() {
 
       <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-2 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-40">
-            <div className="flex items-center gap-3">
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm sticky top-0 z-40">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <a
                 href="/dashboard"
-                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
                 title="Volver al dashboard"
               >
                 <ArrowLeft className="h-5 w-5 text-slate-600" />
               </a>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                  <Wallet className="h-6 w-6 text-indigo-600" />
-                  Gestión de Junta
-                  <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">ADMIN</span>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                  <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600 shrink-0" />
+                  <span className="truncate">Gestión de Junta</span>
+                  <span className="text-[10px] sm:text-xs bg-indigo-100 text-indigo-700 px-1.5 sm:px-2 py-0.5 rounded-full font-bold shrink-0">ADMIN</span>
                 </h1>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               {view === 'DASHBOARD' && (
                 <>
                   {/* Botón de Caja */}
@@ -474,10 +475,10 @@ export default function JuntaPage() {
                         window.location.href = `/dashboard/junta/caja?id=${junta.id}`;
                       }
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-green-600 hover:bg-green-700 text-white h-8 text-xs"
                   >
-                    <Wallet className="h-4 w-4 md:mr-2" />
-                    <span className="hidden md:inline">💰 Caja</span>
+                    <Wallet className="h-4 w-4 md:mr-1" />
+                    <span className="hidden md:inline">Caja</span>
                   </Button>
 
                   {/* Botón de Alertas/Problemas */}
@@ -485,19 +486,19 @@ export default function JuntaPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleOpenProblemsModal}
-                    className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                    className="border-amber-500 text-amber-700 hover:bg-amber-50 h-8 text-xs"
                   >
-                    <AlertTriangle className="h-4 w-4 md:mr-2" />
-                    <span className="hidden md:inline">Ver Alertas</span>
+                    <AlertTriangle className="h-4 w-4 md:mr-1" />
+                    <span className="hidden md:inline">Alertas</span>
                   </Button>
 
                   <Button
                     variant="default"
                     size="sm"
-                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                    className="bg-amber-600 hover:bg-amber-700 text-white h-8 text-xs"
                     onClick={handleArchiveJunta}
                   >
-                    <Archive className="h-4 w-4 md:mr-2" />
+                    <Archive className="h-4 w-4 md:mr-1" />
                     <span className="hidden md:inline">Archivar</span>
                   </Button>
 
@@ -505,12 +506,13 @@ export default function JuntaPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleViewArchived}
+                    className="h-8 text-xs"
                   >
-                    <FolderArchive className="h-4 w-4 md:mr-2" />
+                    <FolderArchive className="h-4 w-4 md:mr-1" />
                     <span className="hidden md:inline">Historial</span>
                   </Button>
 
-                  <Button variant="outline" size="sm" onClick={() => {
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
                     setConfirmDialog({
                       isOpen: true,
                       title: '🔄 Reiniciar Sistema',
@@ -522,14 +524,14 @@ export default function JuntaPage() {
                       }
                     });
                   }}>
-                    <Trash2 className="h-4 w-4 md:mr-2" />
+                    <Trash2 className="h-4 w-4 md:mr-1" />
                     <span className="hidden md:inline">Reiniciar</span>
                   </Button>
                 </>
               )}
               {view === 'ARCHIVED' && (
-                <Button variant="outline" size="sm" onClick={() => setView('DASHBOARD')}>
-                  <ArrowLeft className="h-4 w-4 md:mr-2" />
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setView('DASHBOARD')}>
+                  <ArrowLeft className="h-4 w-4 md:mr-1" />
                   <span className="hidden md:inline">Volver</span>
                 </Button>
               )}
@@ -1176,6 +1178,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
   const [showPayModal, setShowPayModal] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'agenda' | 'resumen'>('agenda');
 
   // Modal de cerrar día
   const [closeDayModal, setCloseDayModal] = useState<{
@@ -1420,69 +1423,91 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
-      {/* LEFT: SERPENTINA AGENDA */}
-      <div className="lg:col-span-8 space-y-6">
+    <div className="animate-in fade-in duration-500 space-y-4">
+      {/* Mobile Tabs */}
+      <div className="lg:hidden flex rounded-lg bg-slate-200 p-1 gap-1">
+        <button
+          className={cn(
+            "flex-1 py-2 text-sm font-semibold rounded-md transition-colors",
+            mobileTab === 'agenda' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          )}
+          onClick={() => setMobileTab('agenda')}
+        >
+          <Calendar className="w-4 h-4 inline mr-1.5" />Agenda
+        </button>
+        <button
+          className={cn(
+            "flex-1 py-2 text-sm font-semibold rounded-md transition-colors",
+            mobileTab === 'resumen' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+          )}
+          onClick={() => setMobileTab('resumen')}
+        >
+          <Users className="w-4 h-4 inline mr-1.5" />Resumen
+        </button>
+      </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-800">Agenda de la Junta</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+        {/* LEFT: AGENDA — visible siempre en desktop, solo en tab "agenda" en mobile */}
+        <div className={cn("lg:col-span-8 space-y-4", mobileTab !== 'agenda' && 'hidden lg:block')}>
 
-          <div className="flex gap-1 sm:gap-2 items-center">
-            {(offlineStats.pending > 0 || offlineStats.failed > 0) && (
-              <div className="flex items-center gap-2 bg-slate-100 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
-                {offlineStats.pending > 0 && <span className="text-amber-600">⏳ {offlineStats.pending}</span>}
-                {offlineStats.failed > 0 && <span className="text-red-500">❌ {offlineStats.failed}</span>}
-                <button onClick={handleRetrySync} className="text-indigo-600 hover:underline ml-1">Reintentar</button>
-              </div>
-            )}
-            <Button variant="ghost" size="sm" onClick={() => setShowNotebook(true)} className="h-8 px-2 sm:px-3">
-              <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline ml-2">Cuaderno</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)} className="h-8 px-2 sm:px-3 text-amber-700 hover:bg-amber-50">
-              <FolderArchive className="w-4 h-4" />
-              <span className="hidden sm:inline ml-2">Juntas Archivadas</span>
-            </Button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800">Agenda de la Junta</h2>
+
+            <div className="flex gap-1 sm:gap-2 items-center flex-wrap">
+              {(offlineStats.pending > 0 || offlineStats.failed > 0) && (
+                <div className="flex items-center gap-2 bg-slate-100 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium">
+                  {offlineStats.pending > 0 && <span className="text-amber-600">⏳ {offlineStats.pending}</span>}
+                  {offlineStats.failed > 0 && <span className="text-red-500">❌ {offlineStats.failed}</span>}
+                  <button onClick={handleRetrySync} className="text-indigo-600 hover:underline ml-1">Reintentar</button>
+                </div>
+              )}
+              <Button variant="ghost" size="sm" onClick={() => setShowNotebook(true)} className="h-8 px-2 sm:px-3">
+                <BookOpen className="w-4 h-4" />
+                <span className="hidden sm:inline ml-2">Cuaderno</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)} className="h-8 px-2 sm:px-3 text-amber-700 hover:bg-amber-50">
+                <FolderArchive className="w-4 h-4" />
+                <span className="hidden sm:inline ml-2">Archivadas</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {junta.schedule.map((day) => {
+              const isExpanded = day.date === expandedDate;
+              const beneficiary = junta.participants.find(p => p.id === day.beneficiaryId);
+              const dailyTotalExpected = junta.participants.reduce((acc, p) => acc + p.dailyCommitment, 0);
+
+              const dayTxs = junta.ledger.filter(t => t.targetDate === day.date);
+              const collected = dayTxs.reduce((acc, t) => acc + t.amount, 0);
+              const statusLabel = getDayStatusLabel(dailyTotalExpected, collected, day.date);
+
+              return (
+                <DayCard
+                  key={day.date}
+                  day={day}
+                  isExpanded={isExpanded}
+                  beneficiary={beneficiary}
+                  dailyTotalExpected={dailyTotalExpected}
+                  collected={collected}
+                  statusLabel={statusLabel}
+                  dayTxs={dayTxs}
+                  junta={junta}
+                  onExpand={() => setExpandedDate(day.date)}
+                  onBeneficiaryChange={handleBeneficiaryChange}
+                  onCloseDay={handleCloseDay}
+                  onReopenDay={handleReopenDay}
+                  onShowPayModal={setShowPayModal}
+                />
+              );
+            })}
           </div>
         </div>
 
-
-        <div className="space-y-4">
-          {junta.schedule.map((day) => {
-            const isExpanded = day.date === expandedDate;
-            const beneficiary = junta.participants.find(p => p.id === day.beneficiaryId);
-            const dailyTotalExpected = junta.participants.reduce((acc, p) => acc + p.dailyCommitment, 0);
-
-            const dayTxs = junta.ledger.filter(t => t.targetDate === day.date);
-            const collected = dayTxs.reduce((acc, t) => acc + t.amount, 0);
-            const statusLabel = getDayStatusLabel(dailyTotalExpected, collected, day.date);
-
-            return (
-              <DayCard
-                key={day.date}
-                day={day}
-                isExpanded={isExpanded}
-                beneficiary={beneficiary}
-                dailyTotalExpected={dailyTotalExpected}
-                collected={collected}
-                statusLabel={statusLabel}
-                dayTxs={dayTxs}
-                junta={junta}
-                onExpand={() => setExpandedDate(day.date)}
-                onBeneficiaryChange={handleBeneficiaryChange}
-                onCloseDay={handleCloseDay}
-                onReopenDay={handleReopenDay}
-                onShowPayModal={setShowPayModal}
-              />
-            );
-          })}
+        {/* RIGHT: SIDEBAR — visible siempre en desktop, solo en tab "resumen" en mobile */}
+        <div className={cn("lg:col-span-4 space-y-4", mobileTab !== 'resumen' && 'hidden lg:block')}>
+          <ParticipantsSummaryCard junta={junta} onViewDetail={onViewDetail} />
         </div>
-      </div>
-
-      {/* RIGHT: SIDEBAR */}
-      <div className="lg:col-span-4 space-y-6">
-        <ParticipantsSummaryCard junta={junta} onViewDetail={onViewDetail} />
-        <CalculatorWidget />
       </div>
 
       {/* MODALS */}
@@ -1669,6 +1694,9 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
 
       {/* Notebook Modal */}
       <NotebookModal isOpen={showNotebook} onClose={() => setShowNotebook(false)} />
+
+      {/* Calculadora flotante FAB */}
+      <FloatingCalculator />
     </div>
   );
 }
@@ -1747,11 +1775,11 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
             </div>
           </div>
         </div>
-        <div className="text-right hidden sm:block">
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Turno de</span>
-          <div className="font-medium text-indigo-600 flex items-center justify-end gap-1">
-            {beneficiary?.name}
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 w-4" />}
+        <div className="text-right shrink-0">
+          <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold hidden sm:block">Turno de</span>
+          <div className="font-medium text-indigo-600 flex items-center justify-end gap-1 text-sm sm:text-base">
+            <span className="truncate max-w-[60px] sm:max-w-none">{beneficiary?.name}</span>
+            {isExpanded ? <ChevronUp className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
           </div>
         </div>
       </div>
@@ -1788,14 +1816,14 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
           </div>
 
           {/* Participant Table */}
-          <div className="border rounded-lg overflow-x-auto mb-4 sm:mb-6">
-            <table className="w-full text-xs sm:text-sm min-w-[360px]">
+          <div className="border rounded-lg overflow-hidden mb-4 sm:mb-6">
+            <table className="w-full text-xs sm:text-sm">
               <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] sm:text-xs">
                 <tr>
-                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-left">Nombre</th>
-                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-center">Estado</th>
-                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Aporte</th>
-                  <th className="px-2 sm:px-4 py-2 sm:py-3 text-right">Acción</th>
+                  <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-left">Nombre</th>
+                  <th className="px-1 sm:px-4 py-2 sm:py-3 text-center hidden sm:table-cell">Estado</th>
+                  <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right">Aporte</th>
+                  <th className="px-1.5 sm:px-4 py-2 sm:py-3 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1806,28 +1834,28 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
 
                   return (
                     <tr key={p.id} className="hover:bg-slate-50/50">
-                      <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium">
-                        {p.name}
-                        {p.id === day.beneficiaryId && <span className="ml-1 text-[9px] sm:text-[10px] bg-indigo-100 text-indigo-700 px-1 py-0.5 rounded border border-indigo-200">RECIBE</span>}
+                      <td className="px-1.5 sm:px-4 py-2 sm:py-3 font-medium">
+                        <span className="truncate block max-w-[80px] sm:max-w-none">{p.name}</span>
+                        {p.id === day.beneficiaryId && <span className="text-[8px] sm:text-[10px] bg-indigo-100 text-indigo-700 px-1 py-0.5 rounded border border-indigo-200">RECIBE</span>}
                       </td>
-                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
+                      <td className="px-1 sm:px-4 py-2 sm:py-3 text-center hidden sm:table-cell">
                         <StatusBadge status={pStatus} />
                       </td>
-                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-right font-mono text-slate-600">
+                      <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-right font-mono text-slate-600">
                         <div className="flex flex-col items-end">
-                          <span>S/ {pPaid.toFixed(0)}</span>
+                          <span className="text-[11px] sm:text-sm">S/ {pPaid.toFixed(0)}</span>
                           {pPaid < p.dailyCommitment && (
-                            <span className="text-[9px] sm:text-[10px] text-red-400">-S/{(p.dailyCommitment - pPaid).toFixed(0)}</span>
+                            <span className="text-[8px] sm:text-[10px] text-red-400">-S/{(p.dailyCommitment - pPaid).toFixed(0)}</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-2 sm:px-4 py-2 sm:py-3 text-right">
+                      <td className="px-1.5 sm:px-4 py-2 sm:py-3 text-right">
                         {!day.isClosed && pStatus !== 'COMPLETO' && (
-                          <Button size="sm" className="h-6 sm:h-7 text-[10px] sm:text-xs px-2" onClick={() => onShowPayModal(p.id)}>
-                            <Plus className="w-3 h-3 mr-0.5" /> Pagar
+                          <Button size="sm" className="h-6 sm:h-7 text-[10px] sm:text-xs px-1.5 sm:px-2" onClick={() => onShowPayModal(p.id)}>
+                            <Plus className="w-3 h-3" /><span className="hidden sm:inline ml-0.5">Pagar</span>
                           </Button>
                         )}
-                        {pStatus === 'COMPLETO' && <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />}
+                        {pStatus === 'COMPLETO' && <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 ml-auto" />}
                       </td>
                     </tr>
                   );
@@ -1860,37 +1888,19 @@ function DayCard({ day, isExpanded, beneficiary, dailyTotalExpected, collected, 
 }
 
 function ParticipantsSummaryCard({ junta, onViewDetail }: { junta: JuntaState; onViewDetail: (id: string) => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // Auto-open on desktop
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) setIsOpen(true);
-      else setIsOpen(false);
-    };
-    handleResize(); // Init
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   return (
     <Card className="overflow-hidden">
       <div
-        className="bg-white p-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 border-b border-slate-100"
-        onClick={() => setIsOpen(!isOpen)}
+        className="bg-white p-4 flex justify-between items-center border-b border-slate-100"
       >
         <div className="font-bold text-slate-800 flex items-center gap-2">
           <Users className="h-5 w-5 text-indigo-500" />
           <span>Resumen por Participante</span>
         </div>
-        <div className="lg:hidden text-slate-400">
-          {isOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-        </div>
       </div>
 
-      {isOpen && (
-        <CardContent className="p-0 animate-in slide-in-from-top-2 duration-200">
-          <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+      <CardContent className="p-0">
+        <div className="divide-y divide-slate-100 max-h-[60vh] lg:max-h-[400px] overflow-y-auto">
             {junta.participants.map(p => {
               const myTxs = junta.ledger.filter(t => t.participantId === p.id);
               const totalContributed = myTxs.reduce((acc, t) => acc + t.amount, 0);
@@ -1937,53 +1947,6 @@ function ParticipantsSummaryCard({ junta, onViewDetail }: { junta: JuntaState; o
             })}
           </div>
         </CardContent>
-      )}
-    </Card>
-  );
-}
-
-function CalculatorWidget() {
-  const [display, setDisplay] = useState('0');
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleInput = (char: string) => setDisplay(prev => prev === '0' || prev === 'Error' ? char : prev + char);
-  const calculate = () => {
-    try {
-      const res = new Function('return ' + display.replace(/x/g, '*'))();
-      setDisplay(String(Number(res).toFixed(2)));
-    } catch {
-      setDisplay('Error');
-    }
-  };
-
-  return (
-    <Card className="overflow-hidden border-indigo-100">
-      <div className="bg-indigo-50 p-3 flex justify-between items-center cursor-pointer hover:bg-indigo-100" onClick={() => setIsOpen(!isOpen)}>
-        <span className="text-sm font-bold text-indigo-800 flex items-center gap-2">
-          <Calculator className="h-4 w-4" /> Calculadora
-        </span>
-        {isOpen ? <ChevronUp className="h-4 w-4 text-indigo-400" /> : <ChevronDown className="h-4 w-4 text-indigo-400" />}
-      </div>
-      {isOpen && (
-        <CardContent className="p-4 bg-white">
-          <div className="bg-slate-100 rounded mb-3 p-2 text-right font-mono text-xl font-bold text-slate-700 h-10 overflow-hidden">{display}</div>
-          <div className="grid grid-cols-4 gap-2">
-            {['7', '8', '9', '/', '4', '5', '6', 'x', '1', '2', '3', '-', 'C', '0', '=', '+'].map(btn => (
-              <button
-                key={btn}
-                onClick={() => {
-                  if (btn === 'C') setDisplay('0');
-                  else if (btn === '=') calculate();
-                  else handleInput(btn);
-                }}
-                className={cn("h-8 rounded text-sm font-bold", btn === 'C' ? "bg-red-100 text-red-600" : "bg-slate-50 hover:bg-slate-200")}
-              >
-                {btn}
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      )}
     </Card>
   );
 }
