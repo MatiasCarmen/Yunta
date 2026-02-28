@@ -266,6 +266,7 @@ export async function getCuentasDisponibles(): Promise<
   Array<{ id: string; nombre: string; saldo: number }>
 > {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     const cuentas = await prisma.cajaAccount.findMany({
       orderBy: { tipoCuenta: "asc" }
     });
@@ -289,6 +290,7 @@ export async function inicializarCuentasCaja(): Promise<{
   message: string;
 }> {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     const cuentasExistentes = await prisma.cajaAccount.count();
 
     if (cuentasExistentes > 0) {
@@ -385,6 +387,7 @@ async function calculateRebuildReport(tx: Omit<typeof prisma, "$connect" | "$dis
 
 export async function dryRunRebuildCajaBalances() {
   try {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     const report = await calculateRebuildReport();
     return { success: true, report };
   } catch (error: any) {
@@ -394,6 +397,7 @@ export async function dryRunRebuildCajaBalances() {
 }
 
 export async function applyRebuildCajaBalances() {
+  await requireRole(['EJECUTIVO', 'GESTOR']);
   if (isRebuilding) return { success: false, error: "Ya hay una reconstrucción en curso." };
   isRebuilding = true;
 
