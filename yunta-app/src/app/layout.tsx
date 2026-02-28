@@ -3,11 +3,13 @@ import { SplashScreen } from "@/components/ui/splash-screen";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "YUNTA",
+  title: "Yunta - Finanzas en Familia",
   description: "Gestión financiera y juntas familiares",
   manifest: "/manifest.json",
   icons: {
-    apple: "/icons/icon-192.png",
+    icon: "/isotipo.png",
+    shortcut: "/isotipo.png",
+    apple: "/isotipo.png",
   },
 };
 
