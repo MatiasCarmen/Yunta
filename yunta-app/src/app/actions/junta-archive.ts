@@ -65,8 +65,8 @@ export type JuntaFinalReport = {
  * Archiva una junta activa generando un reporte final completo
  */
 export async function archiveJunta(juntaId: string, reason?: string) {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         // 1. Obtener junta con todas sus relaciones
         const junta = await prisma.junta.findUnique({
             where: { id: juntaId },
@@ -228,8 +228,8 @@ export async function archiveJunta(juntaId: string, reason?: string) {
  * Obtiene lista de juntas archivadas
  */
 export async function getArchivedJuntas(): Promise<ArchivedJuntaSummary[]> {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         const archived = await prisma.junta.findMany({
             where: {
                 status: { in: ['ARCHIVED', 'COMPLETED', 'CANCELLED'] }
@@ -280,8 +280,8 @@ export async function getArchivedJuntas(): Promise<ArchivedJuntaSummary[]> {
  * Obtiene el reporte completo de una junta archivada
  */
 export async function getJuntaArchiveReport(juntaId: string): Promise<JuntaFinalReport | null> {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         const junta = await prisma.junta.findUnique({
             where: { id: juntaId }
         });
@@ -301,9 +301,9 @@ export async function getJuntaArchiveReport(juntaId: string): Promise<JuntaFinal
  * Duplica una junta archivada creando una nueva con la misma configuración
  */
 export async function duplicateJunta(juntaId: string, newName: string, newStartDate: Date) {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
-        // Obtener junta original
+        // Obtener junta original con shares y turns en orden
         const originalJunta = await prisma.junta.findUnique({
             where: { id: juntaId },
             include: {
@@ -311,6 +311,9 @@ export async function duplicateJunta(juntaId: string, newName: string, newStartD
                     include: {
                         user: true
                     }
+                },
+                turns: {
+                    orderBy: { date: 'asc' }
                 }
             }
         });
@@ -319,31 +322,74 @@ export async function duplicateJunta(juntaId: string, newName: string, newStartD
             throw new Error('Junta no encontrada');
         }
 
-        // Crear nueva junta
-        const newJunta = await prisma.junta.create({
-            data: {
-                name: newName,
-                description: originalJunta.description,
-                startDate: newStartDate,
-                amount: originalJunta.amount,
-                currency: originalJunta.currency,
-                frequency: originalJunta.frequency,
-                duration: originalJunta.duration,
-                status: 'ACTIVE',
-                adminId: originalJunta.adminId,
-                shares: {
-                    create: originalJunta.shares.map(share => ({
-                        userId: share.userId,
-                        guestName: share.guestName,
-                        committedAmount: share.committedAmount
-                    }))
+        const result = await prisma.$transaction(async (tx) => {
+            // 1. Crear nueva junta
+            const newJunta = await tx.junta.create({
+                data: {
+                    name: newName,
+                    description: originalJunta.description,
+                    startDate: newStartDate,
+                    amount: originalJunta.amount,
+                    currency: originalJunta.currency,
+                    frequency: originalJunta.frequency,
+                    duration: originalJunta.duration,
+                    status: 'ACTIVE',
+                    adminId: originalJunta.adminId,
                 }
+            });
+
+            // 2. Crear Shares y guardar un mapeo OldShareId -> NewShareId
+            const shareMap = new Map<string, string>();
+            for (const oldShare of originalJunta.shares) {
+                const newShare = await tx.juntaShare.create({
+                    data: {
+                        juntaId: newJunta.id,
+                        userId: oldShare.userId,
+                        guestName: oldShare.guestName,
+                        committedAmount: oldShare.committedAmount
+                    }
+                });
+                shareMap.set(oldShare.id, newShare.id);
             }
+
+            // 3. Recrear Turns conservando el beneficiario y el desplazamiento de días
+            // Calculamos la diferencia en milisegundos respecto a la startDate original,
+            // pero para evitar problemas de horas (DST) es mejor usar la diferencia en días.
+            // Para asegurar consistencia, redondeamos.
+            const oldStartTime = startOfDay(originalJunta.startDate).getTime();
+            const newStartTime = startOfDay(newStartDate).getTime();
+            const msPerDay = 1000 * 60 * 60 * 24;
+
+            for (const oldTurn of originalJunta.turns) {
+                const oldTurnTime = startOfDay(oldTurn.date).getTime();
+                const daysDiff = Math.round((oldTurnTime - oldStartTime) / msPerDay);
+
+                const newTurnDate = new Date(newStartTime + (daysDiff * msPerDay));
+                // Asegurar que la hora sea consistente (inicio del día)
+                newTurnDate.setHours(newStartDate.getHours(), newStartDate.getMinutes(), 0, 0);
+
+                const newBeneficiaryId = oldTurn.beneficiaryId ? (shareMap.get(oldTurn.beneficiaryId) || null) : null;
+
+                await tx.juntaTurn.create({
+                    data: {
+                        juntaId: newJunta.id,
+                        turnNumber: oldTurn.turnNumber,
+                        date: newTurnDate,
+                        beneficiaryId: newBeneficiaryId,
+                        expectedAmount: oldTurn.expectedAmount,
+                        status: 'PENDING',
+                        isClosed: false,
+                        closedAt: null,
+                        snapshotJson: null
+                    }
+                });
+            }
+
+            return newJunta;
         });
 
         revalidatePath('/dashboard/junta');
-
-        return { success: true, juntaId: newJunta.id };
+        return { success: true, juntaId: result.id };
     } catch (error) {
         console.error('Error duplicando junta:', error);
         return { success: false, error: String(error) };
