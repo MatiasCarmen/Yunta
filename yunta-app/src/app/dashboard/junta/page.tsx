@@ -16,7 +16,7 @@ import {
   Users, Calendar, History, CheckCircle2, ChevronLeft,
   Banknote, Plus, Trash2,
   Wand2, ArrowRight, Loader2, Wallet, ChevronDown, ChevronUp,
-  Calculator, Clock, Eye, Lock, Unlock, Download, FileText, AlertTriangle, Settings, X, ArrowLeft, RotateCcw, Archive, FolderArchive
+  Calculator, Clock, Eye, Lock, Unlock, Download, FileText, AlertTriangle, Settings, X, ArrowLeft, RotateCcw, Archive, FolderArchive, BookOpen
 } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, CartesianGrid, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts';
 
@@ -51,6 +51,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { LoadingScreen } from '@/components/ui/loading-screen';
+import { NotebookModal } from '@/components/junta/NotebookModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -1174,6 +1175,7 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
   const [expandedDate, setExpandedDate] = useState<string>(initialDate);
   const [showPayModal, setShowPayModal] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showNotebook, setShowNotebook] = useState(false);
 
   // Modal de cerrar día
   const [closeDayModal, setCloseDayModal] = useState<{
@@ -1434,6 +1436,9 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
                 {offlineStats.failed > 0 && <button onClick={handleDiscardFailed} className="text-slate-500 hover:underline ml-2 text-xs">Descartar</button>}
               </div>
             )}
+            <Button variant="ghost" size="sm" onClick={() => setShowNotebook(true)}>
+              <BookOpen className="w-4 h-4 mr-2" /> Cuaderno
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)}>
               <History className="w-4 h-4 mr-2" /> Historial Global
             </Button>
@@ -1660,6 +1665,9 @@ function Dashboard({ junta, onUpdate, onViewDetail }: { junta: JuntaState; onUpd
           </div>
         </div>
       )}
+
+      {/* Notebook Modal */}
+      <NotebookModal isOpen={showNotebook} onClose={() => setShowNotebook(false)} />
     </div>
   );
 }
