@@ -637,6 +637,22 @@ model JuntaPayment {
 }
 
 // ============================================
+// MODELO: CUADERNO GLOBAL
+// ============================================
+
+/// Nota global única para el módulo de Juntas
+model GlobalNotebook {
+  id             String   @id @default(uuid())
+  key            String   @unique @default("GLOBAL")
+  content        String   @default("")
+  lastEditedById String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("global_notebook")
+}
+
+// ============================================
 // MODELOS DE GESTIÓN DE CAJA
 // ============================================
 
