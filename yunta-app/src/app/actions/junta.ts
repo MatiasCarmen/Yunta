@@ -109,8 +109,8 @@ type CreateJuntaInput = {
 // --- ACTIONS ---
 
 export async function createJunta(data: CreateJuntaInput) {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         console.log("Creating Junta...", data);
 
         // 1. Get Admin (Assuming first executive found or fallback)
@@ -180,8 +180,8 @@ export async function createJunta(data: CreateJuntaInput) {
 }
 
 export async function getActiveJunta() {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         const juntaDB = await prisma.junta.findFirst({
             where: { status: 'ACTIVE' },
             include: {
@@ -273,8 +273,8 @@ export async function getActiveJunta() {
 }
 
 export async function recordPayment(juntaId: string, txData: TransactionInput) {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         if (txData.clientTxId) {
             const existing = await prisma.juntaPayment.findUnique({
                 where: { clientTxId: txData.clientTxId }
@@ -350,8 +350,8 @@ export async function recordPayment(juntaId: string, txData: TransactionInput) {
 }
 
 export async function closeDay(juntaId: string, date: string) {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         const targetDate = new Date(date);
         const turn = await prisma.juntaTurn.findFirst({
             where: { juntaId, date: targetDate },
@@ -410,8 +410,8 @@ export async function closeDay(juntaId: string, date: string) {
 }
 
 export async function getParticipantKardex(juntaId: string, participantId: string): Promise<KardexReport | null> {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         const juntaDB = await prisma.junta.findFirst({
             where: { id: juntaId, status: 'ACTIVE' },
             include: {
@@ -557,8 +557,8 @@ export async function getParticipantKardex(juntaId: string, participantId: strin
 }
 
 export async function rescheduleTurn(juntaId: string, date: string, newBeneficiaryId: string) {
+    await requireRole(['EJECUTIVO', 'GESTOR']);
     try {
-        await requireRole(['EJECUTIVO', 'GESTOR']);
         const targetDate = new Date(date);
         const turn = await prisma.juntaTurn.findFirst({
             where: { juntaId, date: targetDate }
