@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { LineChart, Line, ResponsiveContainer, CartesianGrid, Tooltip, XAxis, YAxis, ReferenceLine } from 'recharts';
 
 // Componentes UI
 import { Button } from '@/components/ui/button';
@@ -160,6 +161,88 @@ function SpendingChart({ transactions }: { transactions: Transaction[] }) {
     );
 }
 
+function CashFlowChart({ transactions }: { transactions: Transaction[] }) {
+    const data = useMemo(() => {
+        // Group by Date (YYYY-MM-DD)
+        const groups: Record<string, { in: number, out: number }> = {};
+        const days = 7; // Shows last 7 active days where there were transactions
+
+        transactions.forEach(t => {
+            const dateObj = new Date(t.date);
+            const rawDate = dateObj.toISOString().split('T')[0];
+            const dateStr = dateObj.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+
+            if (!groups[dateStr]) groups[dateStr] = { in: 0, out: 0 };
+
+            if (t.type === 'IN') groups[dateStr].in += Number(t.amount);
+            else groups[dateStr].out += Number(t.amount);
+        });
+
+        const sortedKeys = Object.keys(groups).slice(0, days).reverse(); // limit and reverse for chronological
+        return sortedKeys.map(key => ({
+            name: key,
+            Ingresos: groups[key].in,
+            Gastos: groups[key].out
+        }));
+    }, [transactions]);
+
+    return (
+        <Card className="h-full shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="pb-2">
+                <CardTitle>Flujo de Caja Reciente</CardTitle>
+                <CardDescription>Ingresos vs Gastos por día</CardDescription>
+            </CardHeader>
+            <CardContent className="h-[250px] mt-4 w-full">
+                {data.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                        Sin datos suficientes para graficar
+                    </div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                            <XAxis
+                                dataKey="name"
+                                fontSize={12}
+                                tickLine={false}
+                                axisLine={false}
+                                tickMargin={10}
+                            />
+                            <YAxis
+                                fontSize={12}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(value) => `S/${value}`}
+                                width={60}
+                            />
+                            <Tooltip
+                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                formatter={(value: any) => [`S/ ${Number(value).toFixed(2)}`, undefined]}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="Ingresos"
+                                stroke="#16a34a"
+                                strokeWidth={3}
+                                dot={{ fill: '#16a34a', strokeWidth: 2, r: 4 }}
+                                activeDot={{ r: 6 }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="Gastos"
+                                stroke="#dc2626"
+                                strokeWidth={3}
+                                dot={{ fill: '#dc2626', strokeWidth: 2, r: 4 }}
+                                activeDot={{ r: 6 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 function TransactionList({ transactions }: { transactions: Transaction[] }) {
     return (
         <Card className="h-full shadow-sm hover:shadow-md transition-shadow">
@@ -277,16 +360,11 @@ export default function Dashboard() {
                     const inc = list.filter((t) => t.type === 'IN').reduce((a, b) => a + Number(b.amount), 0);
                     const exp = list.filter((t) => t.type === 'OUT').reduce((a, b) => a + Number(b.amount), 0);
 
-                    // Calcular Junta (Suma de categoría RESERVATION_FUNDS)
-                    const junta = list
-                        .filter((t) => t.type === 'OUT' && t.category === 'RESERVATION_FUNDS')
-                        .reduce((a, b) => a + Number(b.amount), 0);
-
                     setSummary({
                         totalIncome: inc,
                         totalExpenses: exp,
                         balance: inc - exp,
-                        junta
+                        junta: 0
                     });
                 }
             } catch (e) {
@@ -365,11 +443,12 @@ export default function Dashboard() {
             <SummaryCards data={summary} />
 
             {/* Gráficos y Lista */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 h-full">
-                <div className="col-span-full lg:col-span-4 h-full">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-12 h-full">
+                <div className="col-span-full lg:col-span-8 flex flex-col gap-6">
+                    <CashFlowChart transactions={transactions} />
                     <SpendingChart transactions={transactions} />
                 </div>
-                <div className="col-span-full lg:col-span-3 h-full">
+                <div className="col-span-full lg:col-span-4 h-full min-h-[500px]">
                     <TransactionList transactions={transactions} />
                 </div>
             </div>

@@ -368,7 +368,9 @@ export async function duplicateJunta(juntaId: string, newName: string, newStartD
                 // Asegurar que la hora sea consistente (inicio del día)
                 newTurnDate.setHours(newStartDate.getHours(), newStartDate.getMinutes(), 0, 0);
 
-                const newBeneficiaryId = oldTurn.beneficiaryId ? (shareMap.get(oldTurn.beneficiaryId) || null) : null;
+                const newBeneficiaryId = oldTurn.beneficiaryId ? shareMap.get(oldTurn.beneficiaryId) : undefined;
+
+                if (!newBeneficiaryId) continue; // Si por alguna razón no se mapeó, saltamos o manejamos (Prisma exige el string)
 
                 await tx.juntaTurn.create({
                     data: {

@@ -99,7 +99,7 @@ export async function createTransaction(
             // 2. APLICAR REGLA 300/50 SI ES INGRESO
             // ================================================
 
-            if (data.type === 'IN') {
+            if (false) {
                 // 2.1 Crear gasto de 300 soles (Fondo de Reserva)
                 const reservationTransaction = await tx.transaction.create({
                     data: {
@@ -139,7 +139,7 @@ export async function createTransaction(
         // ================================================
 
         const message = data.type === 'IN'
-            ? `Ingreso registrado exitosamente. Se aplicó la regla 300/50: ${YUNTA_RULES.RESERVATION_FUND} soles reservados para junta semanal y ${YUNTA_RULES.PAYROLL} soles para personal.`
+            ? 'Ingreso registrado exitosamente.'
             : 'Gasto registrado exitosamente.';
 
         return {
