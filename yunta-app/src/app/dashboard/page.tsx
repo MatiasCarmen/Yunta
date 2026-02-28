@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { exportTransactionsToCSV } from '@/lib/export';
 
 // Dashboard components
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -65,6 +66,11 @@ export default function Dashboard() {
         localStorage.removeItem('yunta-user-name');
         localStorage.removeItem('yunta-user-role');
         router.push('/');
+    };
+
+    // Función para exportar CSV
+    const handleExportCSV = () => {
+        exportTransactionsToCSV(transactions);
     };
 
     useEffect(() => {
@@ -152,6 +158,8 @@ export default function Dashboard() {
         <div className="animate-in fade-in duration-500 max-w-[1400px] mx-auto p-4 md:p-6 space-y-5">
             {/* ─── Topbar ─── */}
             <DashboardHeader
+                transactions={transactions}
+                onExportCSV={handleExportCSV}
                 userName={user}
                 userRole={userRole}
                 onLogout={handleLogout}

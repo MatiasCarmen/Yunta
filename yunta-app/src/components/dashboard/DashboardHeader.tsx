@@ -13,16 +13,11 @@ import {
     CalendarDays,
     ChevronDown,
     FileBarChart,
-    Download,
-    Trash2,
+    Settings,
 } from 'lucide-react';
 
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import ReportsDrawer from './ReportsDrawer';
+import OptionsDrawer from './OptionsDrawer';
 
 interface DashboardHeaderProps {
     userName: string | null;
@@ -30,6 +25,17 @@ interface DashboardHeaderProps {
     onLogout: () => void;
     searchQuery: string;
     onSearchChange: (query: string) => void;
+    transactions: Array<{
+        id: string;
+        amount: number | string;
+        type: 'IN' | 'OUT';
+        description: string;
+        category?: string;
+        date: string;
+        method?: string;
+        user?: { name: string };
+    }>;
+    onExportCSV: () => void;
 }
 
 type PeriodOption = 'Este mes' | 'Esta semana' | 'Todo';
@@ -40,9 +46,13 @@ export default function DashboardHeader({
     onLogout,
     searchQuery,
     onSearchChange,
+    transactions,
+    onExportCSV,
 }: DashboardHeaderProps) {
     const [period, setPeriod] = useState<PeriodOption>('Este mes');
     const [showPeriodMenu, setShowPeriodMenu] = useState(false);
+    const [showReportsDrawer, setShowReportsDrawer] = useState(false);
+    const [showOptionsDrawer, setShowOptionsDrawer] = useState(false);
 
     const periodOptions: PeriodOption[] = ['Este mes', 'Esta semana', 'Todo'];
 
@@ -106,42 +116,27 @@ export default function DashboardHeader({
                         )}
                     </div>
 
-                    {/* Reportes - disabled */}
-                    {/* Opciones Adicionales (reemplaza Reportes disabled) */}
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-9 gap-1.5 text-xs font-medium border-border/50"
-                            >
-                                <FileBarChart className="h-3.5 w-3.5" />
-                                Opciones
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                                className="cursor-pointer"
-                                onClick={() => {
-                                    alert("Próximamente: Exportación de datos a Excel/CSV");
-                                }}
-                            >
-                                <Download className="h-4 w-4 mr-2" />
-                                Exportar Datos (CSV)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-                                onClick={() => {
-                                    if (confirm("¿Estás seguro de querer iniciar el proceso de borrado de datos? Esto purgará la base de datos de manera irreversible.")) {
-                                        alert("Por seguridad esta acción requiere autorización nivel administrador.");
-                                    }
-                                }}
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Eliminar Datos
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Reportes Avanzados */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-1.5 text-xs font-medium border-border/50"
+                        onClick={() => setShowReportsDrawer(true)}
+                    >
+                        <FileBarChart className="h-3.5 w-3.5" />
+                        Reportes
+                    </Button>
+
+                    {/* Centro de Opciones */}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-9 gap-1.5 text-xs font-medium border-border/50"
+                        onClick={() => setShowOptionsDrawer(true)}
+                    >
+                        <Settings className="h-3.5 w-3.5" />
+                        Opciones
+                    </Button>
 
                     {/* Nuevo Movimiento */}
                     <Button
@@ -197,6 +192,16 @@ export default function DashboardHeader({
                     </Button>
                 </div>
             </div>
+
+            {/* Drawers */}
+            <ReportsDrawer isOpen={showReportsDrawer} onClose={() => setShowReportsDrawer(false)} />
+            <OptionsDrawer
+                isOpen={showOptionsDrawer}
+                onClose={() => setShowOptionsDrawer(false)}
+                userRole={userRole}
+                transactions={transactions}
+                onExportCSV={onExportCSV}
+            />
         </div>
     );
 }
