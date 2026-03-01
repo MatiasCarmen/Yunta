@@ -81,13 +81,27 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        // 1. Cargar Usuario
-        if (typeof window !== 'undefined') {
-            const storedUser = localStorage.getItem('yunta-user-name');
-            const storedRole = localStorage.getItem('yunta-user-role');
-            setUser(storedUser || 'Familia');
-            setUserRole(storedRole);
-        }
+        // 1. Verificar Sesión del Servidor (P0-2 security fix)
+        const verifySession = async () => {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (!res.ok) {
+                    router.push('/');
+                    return;
+                }
+                const data = await res.json();
+                setUser(data.user?.name || 'Familia');
+                setUserRole(data.user?.role || null);
+                
+                // Sync to localStorage for offline fallback only (not source of truth)
+                if (data.user?.id) localStorage.setItem('yunta-user-id', data.user.id);
+                if (data.user?.name) localStorage.setItem('yunta-user-name', data.user.name);
+                if (data.user?.role) localStorage.setItem('yunta-user-role', data.user.role);
+            } catch (error) {
+                console.error('Session verification failed:', error);
+                router.push('/');
+            }
+        };
 
         // 2. Cargar Datos de API
         const fetchData = async () => {
@@ -130,8 +144,9 @@ export default function Dashboard() {
             }
         };
 
-        fetchData();
-    }, []);
+        // Execute session verification first, then fetch data
+        verifySession().then(() => fetchData());
+    }, [router]);
 
     // --- Loading skeleton ---
     if (loading) {
@@ -200,7 +215,10 @@ export default function Dashboard() {
             </div>
 
             {/* ─── Mobile Bottom Navigation ─── */}
-            <MobileBottomNav onMoreClick={() => setShowMoreDrawer(true)} />
+            <MobileBottomNav 
+                onMoreClick={() => setShowMoreDrawer(true)} 
+                userRole={userRole}
+            />
 
             {/* ─── Mobile More Drawer ─── */}
             <MobileMoreDrawer

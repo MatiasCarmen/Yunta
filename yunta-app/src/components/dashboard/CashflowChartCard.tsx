@@ -88,7 +88,10 @@ export default function CashflowChartCard({ transactions }: CashflowChartCardPro
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="h-[240px] w-full">
+            <CardContent 
+                className="h-[240px] w-full" 
+                style={{ minHeight: 240 }}
+            >
                 {data.length === 0 ? (
                     <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
                         Sin datos suficientes para graficar

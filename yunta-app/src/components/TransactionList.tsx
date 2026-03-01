@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { List, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "@/hooks/use-toast";
 
 interface TransactionListProps {
     transactions: Array<{
@@ -26,21 +28,35 @@ const formatCurrency = (amount: number) => {
 };
 
 export function TransactionList({ transactions }: TransactionListProps) {
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async (id: string) => {
-        // Usamos window.confirm nativo por simplicidad, igual que en el plan original
-        if (window.confirm('¿Estás seguro de que deseas eliminar esta transacción? Esta acción no se puede deshacer.')) {
-            try {
-                const res = await fetch(`/api/transactions?id=${id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    alert('Hubo un error al eliminar la transacción');
-                }
-            } catch (error) {
-                console.error(error);
-                alert('Error de conexión');
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/transactions?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                toast({
+                    title: "✓ Transacción eliminada",
+                    description: "La transacción se eliminó correctamente.",
+                });
+                window.location.reload();
+            } else {
+                toast({
+                    title: "✗ Error",
+                    description: "Hubo un error al eliminar la transacción.",
+                    variant: "destructive",
+                });
             }
+        } catch (error) {
+            console.error(error);
+            toast({
+                title: "✗ Error de conexión",
+                description: "No se pudo conectar con el servidor.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -89,7 +105,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive hover:bg-destructive/10"
-                                                onClick={() => handleDelete(t.id)}
+                                                onClick={() => setConfirmDeleteId(t.id)}
                                                 title="Eliminar transacción"
                                             >
                                                 <Trash2 className="h-4 w-4" />
@@ -110,6 +126,22 @@ export function TransactionList({ transactions }: TransactionListProps) {
                     </Table>
                 </div>
             </CardContent>
+            
+            {/* P0-3 Fix: Replace window.confirm with ConfirmDialog */}
+            <ConfirmDialog
+                isOpen={confirmDeleteId !== null}
+                onClose={() => setConfirmDeleteId(null)}
+                onConfirm={() => {
+                    if (confirmDeleteId) handleDelete(confirmDeleteId);
+                    setConfirmDeleteId(null);
+                }}
+                title="Eliminar transacción"
+                message="¿Estás seguro de que deseas eliminar esta transacción? Esta acción no se puede deshacer."
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+                isLoading={isDeleting}
+            />
         </Card>
     );
 }

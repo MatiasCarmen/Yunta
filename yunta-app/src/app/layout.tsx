@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SplashScreen } from "@/components/ui/splash-screen";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className="antialiased">
         <SplashScreen />
         {children}
+        <Toaster />
       </body>
     </html>
   );

@@ -42,7 +42,10 @@ export function SpendingChart({ transactions }: SpendingChartProps) {
             </CardHeader>
             <CardContent>
                 {chartData.length > 0 ? (
-                    <div className="h-[300px] w-full mt-4">
+                    <div 
+                        className="h-[300px] w-full mt-4"
+                        style={{ minHeight: 300 }}
+                    >
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--muted-foreground)/0.2)" />

@@ -172,3 +172,34 @@ export async function toggleUserStatus(userId: string) {
     revalidatePath('/dashboard/admin/users');
     return { success: true, newStatus };
 }
+
+// ============================================
+// DELETE ALL USER DATA (P0-5 Fix)
+// ============================================
+
+export async function deleteAllUserData(userId: string) {
+    await requireRole(['EJECUTIVO']);
+
+    try {
+        // Delete all user data in a transaction
+        await prisma.$transaction(async (tx) => {
+            // Delete transactions
+            await tx.transaction.deleteMany({
+                where: { userId },
+            });
+
+            // Delete junta shares (participations)
+            await tx.juntaShare.deleteMany({
+                where: { userId },
+            });
+
+            console.log(`✓ All data deleted for user ${userId}`);
+        });
+
+        revalidatePath('/dashboard');
+        return { success: true };
+    } catch (error) {
+        console.error('Failed to delete user data:', error);
+        return { success: false, error: 'Error al eliminar los datos.' };
+    }
+}

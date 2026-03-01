@@ -5,6 +5,7 @@ import { X, Settings, Download, Database, Trash2, Palette, Bell } from 'lucide-r
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { useTheme } from '@/hooks/useTheme';
 import NotificationsModal from './modals/NotificationsModal';
+import { deleteAllUserData } from '@/app/actions/admin';
 
 interface OptionsDrawerProps {
   isOpen: boolean;
@@ -45,9 +46,18 @@ export default function OptionsDrawer({
     setTimeout(() => setShowSuccessMessage(false), 3000);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     try {
-      // Clear all localStorage data
+      // P0-5 Fix: Delete from database first
+      const userId = localStorage.getItem('yunta-user-id');
+      if (userId) {
+        const result = await deleteAllUserData(userId);
+        if (!result.success) {
+          console.error('Failed to delete from database:', result.error);
+        }
+      }
+      
+      // Then clear all localStorage data
       const keysToDelete = [
         'yunta-user-id',
         'yunta-user-name',

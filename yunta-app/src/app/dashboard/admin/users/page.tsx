@@ -70,6 +70,34 @@ export default function AdminUsersPage() {
     const [resetTarget, setResetTarget] = useState<string | null>(null);
     const [resetPinValue, setResetPinValue] = useState('');
 
+    // P0-6 Fix: Verify role before rendering
+    const [isAuthorized, setIsAuthorized] = useState(false);
+
+    // ============================================
+    // VERIFY ROLE (CLIENT-SIDE PRE-CHECK)
+    // ============================================
+
+    useEffect(() => {
+        const verifyRole = async () => {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (!res.ok) {
+                    router.push('/dashboard');
+                    return;
+                }
+                const data = await res.json();
+                if (data.user?.role !== 'EJECUTIVO') {
+                    router.push('/dashboard');
+                    return;
+                }
+                setIsAuthorized(true);
+            } catch {
+                router.push('/dashboard');
+            }
+        };
+        verifyRole();
+    }, [router]);
+
     // ============================================
     // LOAD USERS
     // ============================================
@@ -87,9 +115,11 @@ export default function AdminUsersPage() {
     };
 
     useEffect(() => {
-        loadUsers();
+        if (isAuthorized) {
+            loadUsers();
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [isAuthorized]);
 
     // ============================================
     // HANDLERS
@@ -161,7 +191,8 @@ export default function AdminUsersPage() {
     // RENDER
     // ============================================
 
-    if (loading) {
+    // P0-6 Fix: Don't render until authorized
+    if (!isAuthorized || loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />

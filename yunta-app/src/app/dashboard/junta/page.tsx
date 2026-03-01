@@ -164,6 +164,9 @@ export default function JuntaPage() {
   
   // Estado para drawer móvil
   const [showMoreDrawer, setShowMoreDrawer] = useState(false);
+  
+  // Estado para role-based UI (P0-1 fix)
+  const [userRole, setUserRole] = useState<string | null>(null);
 
 
   // Estados para diálogos personalizados
@@ -210,6 +213,22 @@ export default function JuntaPage() {
     overdueUnlockedDays: 0,
     lowComplianceParticipants: []
   });
+
+  // Verify server session and get userRole (P0-2 fix)
+  useEffect(() => {
+    const verifySession = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          setUserRole(data.user?.role || null);
+        }
+      } catch (error) {
+        console.error('Session verification failed:', error);
+      }
+    };
+    verifySession();
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -912,7 +931,10 @@ export default function JuntaPage() {
         </div>
 
         {/* Mobile Navigation */}
-        <MobileBottomNav onMoreClick={() => setShowMoreDrawer(true)} />
+        <MobileBottomNav 
+          onMoreClick={() => setShowMoreDrawer(true)}
+          userRole={userRole}
+        />
         <MobileJuntaMoreDrawer
           isOpen={showMoreDrawer}
           onClose={() => setShowMoreDrawer(false)}

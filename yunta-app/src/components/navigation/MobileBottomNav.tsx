@@ -6,12 +6,17 @@ import { Home, Receipt, Users, Wallet, MoreHorizontal } from 'lucide-react';
 
 interface MobileBottomNavProps {
   onMoreClick: () => void;
+  userRole?: string | null;
 }
 
-export default function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
+export default function MobileBottomNav({ onMoreClick, userRole }: MobileBottomNavProps) {
   const pathname = usePathname();
+  
+  // RBAC: Only EJECUTIVO and GESTOR can access Junta/Caja
+  const canAccessJunta = userRole === 'EJECUTIVO' || userRole === 'GESTOR';
 
-  const navItems = [
+  // Build nav items based on role permissions
+  const baseNavItems = [
     {
       label: 'Inicio',
       icon: Home,
@@ -24,19 +29,26 @@ export default function MobileBottomNav({ onMoreClick }: MobileBottomNavProps) {
       href: '/dashboard/transactions/new',
       isActive: pathname?.startsWith('/dashboard/transactions'),
     },
-    {
-      label: 'Junta',
-      icon: Users,
-      href: '/dashboard/junta',
-      isActive: pathname === '/dashboard/junta',
-    },
-    {
-      label: 'Caja',
-      icon: Wallet,
-      href: '/dashboard/junta/caja',
-      isActive: pathname === '/dashboard/junta/caja',
-    },
   ];
+
+  const restrictedNavItems = canAccessJunta
+    ? [
+        {
+          label: 'Junta',
+          icon: Users,
+          href: '/dashboard/junta',
+          isActive: pathname === '/dashboard/junta',
+        },
+        {
+          label: 'Caja',
+          icon: Wallet,
+          href: '/dashboard/junta/caja',
+          isActive: pathname === '/dashboard/junta/caja',
+        },
+      ]
+    : [];
+
+  const navItems = [...baseNavItems, ...restrictedNavItems];
 
   return (
     <nav

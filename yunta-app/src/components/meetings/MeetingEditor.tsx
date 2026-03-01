@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { localDb } from '@/database/local'; // Instancia de Dexie
+import { toast } from '@/hooks/use-toast';
 
 export default function MeetingEditor() {
     const router = useRouter();
@@ -57,15 +58,22 @@ export default function MeetingEditor() {
                 // createdAt: new Date() // No está en la interfaz LocalMeeting, lo omitimos o agregamos a la interfaz si es necesario.
             });
 
-            // Feedback inmediato
-            window.alert('✅ Junta guardada en el dispositivo (Modo Offline activo)');
+            // Feedback inmediato (P0-3 fix)
+            toast({
+                title: "✓ Junta guardada",
+                description: "La junta se guardó en el dispositivo (Modo Offline activo)",
+            });
 
             // Redirigir al dashboard (o listado de juntas cuando exista)
             router.push('/dashboard');
 
         } catch (error) {
             console.error('Error al guardar en local:', error);
-            window.alert('❌ Error al guardar la junta');
+            toast({
+                title: "✗ Error al guardar",
+                description: "No se pudo guardar la junta",
+                variant: "destructive",
+            });
         } finally {
             setIsSaving(false);
         }
