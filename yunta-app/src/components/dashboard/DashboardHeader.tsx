@@ -35,6 +35,12 @@ interface DashboardHeaderProps {
         method?: string;
         user?: { name: string };
     }>;
+    summary: {
+        totalIncome: number;
+        totalExpenses: number;
+        balance: number;
+        junta: number;
+    };
     onExportCSV: () => void;
     showReportsDrawer: boolean;
     setShowReportsDrawer: (show: boolean) => void;
@@ -51,6 +57,7 @@ export default function DashboardHeader({
     searchQuery,
     onSearchChange,
     transactions,
+    summary,
     onExportCSV,
     showReportsDrawer,
     setShowReportsDrawer,
@@ -200,7 +207,12 @@ export default function DashboardHeader({
             </div>
 
             {/* Drawers */}
-            <ReportsDrawer isOpen={showReportsDrawer} onClose={() => setShowReportsDrawer(false)} />
+            <ReportsDrawer 
+                isOpen={showReportsDrawer} 
+                onClose={() => setShowReportsDrawer(false)} 
+                transactions={transactions}
+                summary={summary}
+            />
             <OptionsDrawer
                 isOpen={showOptionsDrawer}
                 onClose={() => setShowOptionsDrawer(false)}

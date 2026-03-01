@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { X, Settings, Download, Database, Trash2, Palette, Bell } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { useTheme } from '@/hooks/useTheme';
+import NotificationsModal from './modals/NotificationsModal';
 
 interface OptionsDrawerProps {
   isOpen: boolean;
@@ -31,6 +33,8 @@ export default function OptionsDrawer({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successText, setSuccessText] = useState('');
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   if (!isOpen) return null;
 
@@ -42,12 +46,96 @@ export default function OptionsDrawer({
   };
 
   const handleDeleteConfirm = () => {
-    // Aquí iría la lógica real de borrado
-    // Por ahora, solo cerramos el diálogo
-    setShowDeleteConfirm(false);
-    setSuccessText('Esta función estará disponible próximamente');
-    setShowSuccessMessage(true);
-    setTimeout(() => setShowSuccessMessage(false), 3000);
+    try {
+      // Clear all localStorage data
+      const keysToDelete = [
+        'yunta-user-id',
+        'yunta-user-name',
+        'yunta-user-role',
+        'yunta-savings-goals',
+        'yunta-theme',
+        'yunta-notifications-enabled',
+        'yunta-notifications-prefs',
+      ];
+      
+      keysToDelete.forEach((key) => {
+        localStorage.removeItem(key);
+      });
+
+      setShowDeleteConfirm(false);
+      setSuccessText('Datos eliminados correctamente');
+      setShowSuccessMessage(true);
+      
+      // Redirect to login after 1.5 seconds
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
+    } catch (error) {
+      console.error('Error deleting data:', error);
+      setShowDeleteConfirm(false);
+      setSuccessText('Error al eliminar datos');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    }
+  };
+
+  const handleBackup = () => {
+    try {
+      // Collect all app data
+      const backupData = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        user: {
+          id: localStorage.getItem('yunta-user-id'),
+          name: localStorage.getItem('yunta-user-name'),
+          role: localStorage.getItem('yunta-user-role'),
+        },
+        savingsGoals: localStorage.getItem('yunta-savings-goals') || '[]',
+        theme: localStorage.getItem('yunta-theme') || 'light',
+        notifications: {
+          enabled: localStorage.getItem('yunta-notifications-enabled') || 'false',
+          prefs: localStorage.getItem('yunta-notifications-prefs') || '{}',
+        },
+        transactions: transactions,
+      };
+
+      // Create JSON file
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `yunta-backup-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccessText('Backup guardado correctamente');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error('Error creating backup:', error);
+      setSuccessText('Error al crear backup');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    }
+  };
+
+  const handleSaveNotifications = (enabled: boolean, prefs: any) => {
+    try {
+      localStorage.setItem('yunta-notifications-enabled', enabled.toString());
+      localStorage.setItem('yunta-notifications-prefs', JSON.stringify(prefs));
+      setSuccessText('Notificaciones actualizadas');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    } catch (error) {
+      console.error('Error saving notifications:', error);
+      setSuccessText('Error al guardar notificaciones');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+    }
   };
 
   const options = [
@@ -65,11 +153,7 @@ export default function OptionsDrawer({
       label: 'Guardar Backup',
       description: 'Copia de seguridad completa',
       icon: Database,
-      action: () => {
-        setSuccessText('Backup - Próximamente');
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
-      },
+      action: handleBackup,
       variant: 'default' as const,
       disabled: false,
     },
@@ -85,13 +169,15 @@ export default function OptionsDrawer({
     },
     {
       id: 'theme',
-      label: 'Ajustes de Tema',
-      description: 'Personaliza la apariencia',
+      label: 'Cambiar Tema',
+      description: `Actual: ${theme === 'light' ? 'Claro' : 'Oscuro'}`,
       icon: Palette,
       action: () => {
-        setSuccessText('Próximamente: tema claro/oscuro');
+        toggleTheme();
+        const newTheme = theme === 'light' ? 'Oscuro' : 'Claro';
+        setSuccessText(`Tema cambiado a ${newTheme}`);
         setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
+        setTimeout(() => setShowSuccessMessage(false), 2000);
       },
       variant: 'default' as const,
       disabled: false,
@@ -101,11 +187,7 @@ export default function OptionsDrawer({
       label: 'Notificaciones',
       description: 'Configura alertas y recordatorios',
       icon: Bell,
-      action: () => {
-        setSuccessText('Próximamente: sistema de notificaciones');
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
-      },
+      action: () => setShowNotificationsModal(true),
       variant: 'default' as const,
       disabled: false,
     },
@@ -228,6 +310,13 @@ export default function OptionsDrawer({
         variant="destructive"
         requiresInput={true}
         requiredInputValue="BORRAR"
+      />
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        isOpen={showNotificationsModal}
+        onClose={() => setShowNotificationsModal(false)}
+        onSave={handleSaveNotifications}
       />
     </>
   );

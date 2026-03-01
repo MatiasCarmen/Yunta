@@ -14,7 +14,7 @@ import CashflowChartCard from '@/components/dashboard/CashflowChartCard';
 import RecentTransactionsCard from '@/components/dashboard/RecentTransactionsCard';
 import ExpenseAnalysisCard from '@/components/dashboard/ExpenseAnalysisCard';
 import PlaceholderBudgetCard from '@/components/dashboard/PlaceholderBudgetCard';
-import PlaceholderGoalsCard from '@/components/dashboard/PlaceholderGoalsCard';
+import GoalsCard from '@/components/dashboard/GoalsCard';
 
 // --- TIPOS ---
 interface Transaction {
@@ -166,6 +166,7 @@ export default function Dashboard() {
             {/* ─── Topbar ─── */}
             <DashboardHeader
                 transactions={transactions}
+                summary={summary}
                 onExportCSV={handleExportCSV}
                 userName={user}
                 userRole={userRole}
@@ -195,7 +196,7 @@ export default function Dashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <ExpenseAnalysisCard transactions={filteredTransactions} />
                 <PlaceholderBudgetCard transactions={filteredTransactions} />
-                <PlaceholderGoalsCard />
+                <GoalsCard />
             </div>
 
             {/* ─── Mobile Bottom Navigation ─── */}

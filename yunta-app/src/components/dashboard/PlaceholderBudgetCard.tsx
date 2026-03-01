@@ -60,7 +60,7 @@ export default function PlaceholderBudgetCard({ transactions }: PlaceholderBudge
                     Presupuesto vs. Real
                 </CardTitle>
                 <CardDescription className="text-xs">
-                    {hasData ? 'Estimación basada en tus gastos' : 'Próximamente'}
+                    Estimación basada en tus gastos
                 </CardDescription>
             </CardHeader>
             <CardContent>

@@ -42,7 +42,7 @@ export default function FloatingCalculator() {
         className={cn(
           'fixed z-50 rounded-full shadow-lg transition-all duration-200',
           'flex items-center justify-center',
-          'bottom-6 right-4 sm:bottom-4 sm:right-4',
+          'bottom-24 right-4 lg:bottom-4 lg:right-4',
           'w-12 h-12 sm:w-14 sm:h-14',
           'focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2',
           isOpen
@@ -71,10 +71,10 @@ export default function FloatingCalculator() {
             className={cn(
               'fixed z-50 bg-white rounded-2xl shadow-2xl border border-slate-200',
               'animate-in fade-in slide-in-from-bottom-4 duration-200',
-              // Mobile: centrado abajo
-              'bottom-20 right-4 left-4 sm:left-auto sm:w-[260px]',
+              // Mobile: centrado abajo, por encima del bottom nav
+              'bottom-32 right-4 left-4 sm:left-auto sm:w-[260px]',
               // Desktop: esquina inferior derecha
-              'sm:bottom-20 sm:right-4'
+              'lg:bottom-20 lg:right-4'
             )}
           >
             {/* Header */}

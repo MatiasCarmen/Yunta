@@ -6,6 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
     Search,
     Banknote,
     ShoppingCart,
@@ -56,10 +64,46 @@ const getMethodBadge = (method?: string) => {
 export default function RecentTransactionsCard({ transactions }: RecentTransactionsCardProps) {
     const [localSearch, setLocalSearch] = useState('');
     const [sortAsc, setSortAsc] = useState(false);
+    const [filterType, setFilterType] = useState<'ALL' | 'IN' | 'OUT'>('ALL');
+    const [filterMethod, setFilterMethod] = useState<string[]>([]);
+    const [filterCategory, setFilterCategory] = useState<string[]>([]);
+
+    // Extract unique methods and categories
+    const uniqueMethods = useMemo(() => {
+        const methods = new Set<string>();
+        transactions.forEach((t) => {
+            if (t.method) methods.add(t.method);
+        });
+        return Array.from(methods).sort();
+    }, [transactions]);
+
+    const uniqueCategories = useMemo(() => {
+        const categories = new Set<string>();
+        transactions.forEach((t) => {
+            if (t.category) categories.add(t.category);
+        });
+        return Array.from(categories).sort();
+    }, [transactions]);
 
     const filtered = useMemo(() => {
         let list = [...transactions];
 
+        // Apply type filter
+        if (filterType !== 'ALL') {
+            list = list.filter((t) => t.type === filterType);
+        }
+
+        // Apply method filter
+        if (filterMethod.length > 0) {
+            list = list.filter((t) => t.method && filterMethod.includes(t.method));
+        }
+
+        // Apply category filter
+        if (filterCategory.length > 0) {
+            list = list.filter((t) => t.category && filterCategory.includes(t.category));
+        }
+
+        // Apply search filter
         if (localSearch.trim()) {
             const q = localSearch.toLowerCase();
             list = list.filter(
@@ -70,12 +114,13 @@ export default function RecentTransactionsCard({ transactions }: RecentTransacti
             );
         }
 
+        // Apply sorting
         if (sortAsc) {
             list.sort((a, b) => Number(a.amount) - Number(b.amount));
         }
 
         return list;
-    }, [transactions, localSearch, sortAsc]);
+    }, [transactions, localSearch, sortAsc, filterType, filterMethod, filterCategory]);
 
     return (
         <Card className="shadow-sm hover:shadow-md transition-shadow h-full flex flex-col">
@@ -95,9 +140,101 @@ export default function RecentTransactionsCard({ transactions }: RecentTransacti
                         >
                             <ArrowUpDown className={`h-3.5 w-3.5 ${sortAsc ? 'text-primary' : 'text-muted-foreground'}`} />
                         </button>
-                        <div className="p-1.5 rounded-md text-muted-foreground opacity-50 cursor-not-allowed" title="Filtros · Próximamente">
-                            <Filter className="h-3.5 w-3.5" />
-                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                                    title="Filtros"
+                                >
+                                    <Filter className={`h-3.5 w-3.5 ${
+                                        filterType !== 'ALL' || filterMethod.length > 0 || filterCategory.length > 0
+                                            ? 'text-primary'
+                                            : 'text-muted-foreground'
+                                    }`} />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Tipo</DropdownMenuLabel>
+                                <DropdownMenuCheckboxItem
+                                    checked={filterType === 'ALL'}
+                                    onCheckedChange={() => setFilterType('ALL')}
+                                >
+                                    Todos
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuCheckboxItem
+                                    checked={filterType === 'IN'}
+                                    onCheckedChange={() => setFilterType('IN')}
+                                >
+                                    Ingresos
+                                </DropdownMenuCheckboxItem>
+                                <DropdownMenuCheckboxItem
+                                    checked={filterType === 'OUT'}
+                                    onCheckedChange={() => setFilterType('OUT')}
+                                >
+                                    Egresos
+                                </DropdownMenuCheckboxItem>
+
+                                {uniqueMethods.length > 0 && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuLabel>Método</DropdownMenuLabel>
+                                        {uniqueMethods.map((method) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={method}
+                                                checked={filterMethod.includes(method)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setFilterMethod([...filterMethod, method]);
+                                                    } else {
+                                                        setFilterMethod(filterMethod.filter((m) => m !== method));
+                                                    }
+                                                }}
+                                            >
+                                                {method}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </>
+                                )}
+
+                                {uniqueCategories.length > 0 && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuLabel>Categoría</DropdownMenuLabel>
+                                        {uniqueCategories.map((category) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={category}
+                                                checked={filterCategory.includes(category)}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setFilterCategory([...filterCategory, category]);
+                                                    } else {
+                                                        setFilterCategory(filterCategory.filter((c) => c !== category));
+                                                    }
+                                                }}
+                                            >
+                                                {category}
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
+                                    </>
+                                )}
+
+                                {(filterType !== 'ALL' || filterMethod.length > 0 || filterCategory.length > 0) && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <button
+                                            onClick={() => {
+                                                setFilterType('ALL');
+                                                setFilterMethod([]);
+                                                setFilterCategory([]);
+                                            }}
+                                            className="w-full px-2 py-1.5 text-xs text-center text-primary hover:bg-muted rounded-sm"
+                                        >
+                                            Limpiar filtros
+                                        </button>
+                                    </>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
                 </div>
                 {/* Búsqueda interna */}
